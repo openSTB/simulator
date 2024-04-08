@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: openSTB contributors
+# SPDX-License-Identifier: CC0-1.0
+
+# Editor configuration settings.
+#
+# https://editorconfig.org/
+#
+# See the documentation for details on plugins for your editor.
+
+root = true
+
+[*]
+charset = utf-8
+indent_size = 4
+indent_style = space
+insert_final_newline = false
+max_line_length = 88
+trim_trailing_whitespace = true

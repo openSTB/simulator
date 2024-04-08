@@ -1,2 +1,14 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: CC0-1.0
+
+# Compiled Python files.
+__pycache__/
+*.py[cod]
+
+# Packaging artifacts.
+build/
+dist/
+src/openstb/locale
+
+# mypy cache of type information.
+.mypy_cache/
