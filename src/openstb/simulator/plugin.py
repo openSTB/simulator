@@ -5,7 +5,7 @@ import hashlib
 import importlib.metadata
 import importlib.util
 from pathlib import Path
-from typing import cast
+from typing import Any, Literal, TypedDict, overload
 
 from openstb.i18n.support import domain_translator
 
@@ -15,26 +15,54 @@ from openstb.simulator import abc
 _ = domain_translator("openstb.simulator")
 
 
-def installed_plugins(group: str) -> list[tuple[str, str]]:
-    """List installed plugins.
+@overload
+def registered_plugins(
+    group: str, load: Literal[True]
+) -> list[tuple[str, str, type[abc.Plugin]]]: ...
+
+
+@overload
+def registered_plugins(group: str, load: Literal[False]) -> list[tuple[str, str]]: ...
+
+
+@overload
+def registered_plugins(
+    group: str, load: bool
+) -> list[tuple[str, str]] | list[tuple[str, str, type[abc.Plugin]]]: ...
+
+
+def registered_plugins(
+    group: str, load: bool = False
+) -> list[tuple[str, str]] | list[tuple[str, str, type[abc.Plugin]]]:
+    """List registered plugins.
 
     Parameters
     ----------
     group : str
         The name of the entry point group to list plugins for, e.g.,
         "openstb.simulator.trajectory".
+    load : Boolean
+        If True, include the loaded plugins in the return. If False, only report the
+        name and source of each plugin.
 
     Returns
     -------
     installed : list
-        A list of (name, src) tuples where name is the name the plugin is installed as
-        and src is the reference to the module and class implementing the plugin.
+        A list of (name, src) tuples where name is the name the plugin is registered as
+        and src is the reference to the module and class implementing the plugin. If
+        ``load`` was True, a third entry ``cls`` will be added to each tuple containing
+        the loaded plugin class.
 
     """
+    if load:
+        return [
+            (ep.name, ep.value, ep.load())
+            for ep in importlib.metadata.entry_points(group=group)
+        ]
     return [(ep.name, ep.value) for ep in importlib.metadata.entry_points(group=group)]
 
 
-def load_plugin(group: str, name: str) -> abc.Plugin:
+def load_plugin_class(group: str, name: str) -> type[abc.Plugin]:
     """Load a plugin class.
 
     Three formats are supported for the name of the plugin:
@@ -68,7 +96,7 @@ def load_plugin(group: str, name: str) -> abc.Plugin:
 
     # Separator not present: this is a registered plugin.
     if not sep:
-        eps = importlib.metadata.entry_points(group=group, name=name)
+        eps = importlib.metadata.entry_points().select(group=group, name=name)
         if not eps:
             raise ValueError(
                 _("no {group} plugin named '{name}' is installed").format(
@@ -81,7 +109,7 @@ def load_plugin(group: str, name: str) -> abc.Plugin:
                     group=group, name=name
                 )
             )
-        return eps[0].load()
+        return eps[name].load()
 
     # Not a registered plugin; does it refer to a file?
     path = Path(modname_or_path)
@@ -97,7 +125,7 @@ def load_plugin(group: str, name: str) -> abc.Plugin:
         if spec is None or spec.loader is None:
             raise ValueError(
                 _(
-                    "Could not create import specification for plugin file {path}"
+                    "could not create import specification for plugin file {path}"
                 ).format(path=path)
             )
 
@@ -121,15 +149,26 @@ def load_plugin(group: str, name: str) -> abc.Plugin:
     return getattr(mod, classname)
 
 
-# Note: the cast() call does no runtime checking, simply returning the value unchanged.
-# It is used to indicate to a static type checker that return values from the functions
-# will have the specific type rather than the generic Plugin type.
+class PluginSpecDict(TypedDict):
+    """Specification for a plugin."""
+
+    #: Name of the plugin. See `load_plugin_class` for the supported types.
+    name: str
+
+    #: Parameters for the plugin.
+    parameters: dict[str, Any]
 
 
-def trajectory_plugin(name: str) -> abc.Trajectory:
-    """Load a trajectory plugin.
+#: Specification for a plugin: either a `PluginSpecDict` or an existing instance of a
+#: plugin.
+PluginSpec = PluginSpecDict | abc.Plugin
 
-    See the `load_plugin` function for details of the ``name`` parameter.
 
-    """
-    return cast(abc.Trajectory, load_plugin("openstb.simulator.trajectory", name))
+def load_plugin(group: str, plugin_spec: PluginSpec) -> abc.Plugin:
+    # Note: we cannot check isinstance(..., Mapping) here as plugins may implement the
+    # Mapping interface.
+    if isinstance(plugin_spec, dict):
+        cls = load_plugin_class(group, plugin_spec["name"])
+        return cls(**plugin_spec.get("parameters", {}))
+
+    return plugin_spec
