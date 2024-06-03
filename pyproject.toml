@@ -37,6 +37,26 @@ domain = "openstb.simulator"
 
 
 #
+# Test configuration.
+#
+
+[tool.pytest.ini_options]
+testpaths = "tests"
+addopts = [
+  "--import-mode=importlib",
+  "--cov=openstb.simulator", "--cov-report=html:tests/coverage", "--cov-branch",
+]
+
+[tool.coverage.report]
+
+exclude_lines = [
+  "pragma:no cover",
+  "^\\s*pass\\s*$",
+  "^\\s*@overload",
+]
+
+
+#
 # Configuration of linting tools.
 #
 

@@ -12,3 +12,7 @@ src/openstb/locale
 
 # mypy cache of type information.
 .mypy_cache/
+
+# Test coverage reports.
+.coverage
+tests/coverage
