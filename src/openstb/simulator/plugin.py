@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any, Literal, TypedDict, overload
 
 from openstb.i18n.support import domain_translator
-
 from openstb.simulator import abc
 
 

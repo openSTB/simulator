@@ -17,9 +17,11 @@ detailed checking.
 """
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 import numpy as np
 from numpy.typing import ArrayLike
+import quaternionic
 
 
 class Plugin(ABC):
@@ -32,12 +34,18 @@ class Trajectory(Plugin):
     @property
     @abstractmethod
     def duration(self) -> float:
-        """The duration of the recorded trajectory in seconds."""
+        """The duration of the trajectory in seconds."""
         pass
 
     @property
     @abstractmethod
-    def start_time(self) -> np.datetime64:
+    def length(self) -> float:
+        """The length of the trajectory in seconds."""
+        pass
+
+    @property
+    @abstractmethod
+    def start_time(self) -> datetime:
         """The UTC time of the first sample in the trajectory.
 
         Note that this can be generated at first access (e.g., set to the current date
@@ -47,23 +55,65 @@ class Trajectory(Plugin):
         pass
 
     @abstractmethod
-    def interpolate(self, t: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
-        """Interpolate the trajectory at a given time.
+    def position(self, t: ArrayLike) -> np.ndarray:
+        """Calculate the position of the sonar at a given time.
 
         Parameters
         ----------
         t : array-like of floats
-            The times, in seconds relative to the first sample of the trajectory, to
-            interpolate the trajectory at.
+            The times of interest in seconds relative to the first sample of the
+            trajectory.
 
         Returns
         -------
         position : numpy.ndarray
-            The position of the sonar at each requested time. Must have a shape (..., 3)
-            where `...` is the shape of the input `t`.
+            The position of the sonar at each requested time. This will have a shape
+            (..., 3) where ``...`` is the shape of the input ``t``. Values where the
+            given time is less than zero or greater than the trajectory's duration will
+            be set to `np.nan`.
+
+        """
+        pass
+
+    @abstractmethod
+    def orientation(self, t: ArrayLike) -> quaternionic.QArray:
+        """Calculate the orientation of the sonar at a given time.
+
+        Parameters
+        ----------
+        t : array-like of floats
+            The times of interest in seconds relative to the first sample of the
+            trajectory.
+
+        Returns
+        -------
         orientation : numpy.ndarray
-            The orientation of the sonar at each requested time as an array of
-            quaternions.
+            The orientation of the sonar at each requested time as quaternions
+            representing the rotation of the global x axis to the vehicle's x axis. This
+            will have a shape (..., 4) where ``...`` is the shape of the input ``t``.
+            Values where the given time is less than zero or greater than the
+            trajectory's duration will be set to `np.nan`.
+
+        """
+        pass
+
+    @abstractmethod
+    def velocity(self, t: ArrayLike) -> np.ndarray:
+        """Calculate the velocity of the sonar at a given time.
+
+        Parameters
+        ----------
+        t : array-like of floats
+            The times of interest in seconds relative to the first sample of the
+            trajectory.
+
+        Returns
+        -------
+        velocity : numpy.ndarray
+            The velocity of the sonar at each requested time. This will have a shape
+            (..., 3) where ``...`` is the shape of the input ``t``. Values where the
+            given time is less than zero or greater than the trajectory's duration will
+            be set to `np.nan`.
 
         """
         pass
