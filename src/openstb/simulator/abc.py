@@ -117,3 +117,25 @@ class Trajectory(Plugin):
 
         """
         pass
+
+
+class PingTimes(Plugin):
+    """Times that the sonar starts transmitting a ping."""
+
+    @abstractmethod
+    def calculate(self, trajectory: Trajectory) -> np.ndarray:
+        """Calculate the ping times.
+
+        Parameters
+        ----------
+        trajectory : openstb.simulator.abc.Trajectory
+            The trajectory being followed by the system.
+
+        Returns
+        -------
+        ping_times : numpy.ndarray
+            A one-dimensional array of floats giving the ping start times in seconds
+            since the start of the trajectory.
+
+        """
+        pass

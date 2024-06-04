@@ -20,6 +20,10 @@ dependencies = [
 # Register included plugins at the appropriate entry points.
 #
 
+[project.entry-points."openstb.simulator.ping_times"]
+constant_distance = "openstb.simulator.system.ping_times:ConstantDistance"
+constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"
+
 [project.entry-points."openstb.simulator.trajectory"]
 linear = "openstb.simulator.system.trajectory:Linear"
 
