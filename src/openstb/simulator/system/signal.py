@@ -4,8 +4,7 @@
 import numpy as np
 from numpy.typing import ArrayLike
 
-from openstb.simulator import abc
-from openstb.simulator.system.signal_windows import get_window_func
+from openstb.simulator import abc, plugin
 
 
 class LFMChirp(abc.Signal):
@@ -16,8 +15,7 @@ class LFMChirp(abc.Signal):
         f_start: float,
         f_stop: float,
         duration: float,
-        window: str | None = None,
-        window_params: dict | None = None,
+        window: plugin.PluginSpec | None = None,
     ):
         """
         Parameters
@@ -26,17 +24,15 @@ class LFMChirp(abc.Signal):
             The start (t=0) and stop (t=duration) frequencies of the chirp.
         duration : float
             The duration of the chirp in seconds.
+        window : PluginSpec
+            Plugin specification for a signal window to apply to the samples of the
+            signal.
 
         """
         self.f_start = f_start
         self.f_stop = f_stop
         self._duration = duration
-        self.window = window
-        self.window_params = window_params or {}
-
-        if self.window is not None:
-            self._window_func = get_window_func(self.window)
-            self._window_func(np.zeros(2), self._duration, **self.window_params)
+        self.window = None if window is None else plugin.signal_window_plugin(window)
 
     @property
     def duration(self) -> float:
@@ -57,7 +53,7 @@ class LFMChirp(abc.Signal):
         K = (self.f_stop - self.f_start) / self._duration
         s[valid] = np.exp(1j * np.pi * tv * (2 * fd + K * tv))
 
-        if self.window:
-            s *= self._window_func(t, self._duration, **self.window_params)
+        if self.window is not None:
+            s *= self.window.get_samples(t, self._duration, fill_value=0)
 
         return s

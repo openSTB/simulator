@@ -5,7 +5,7 @@ import hashlib
 import importlib.metadata
 import importlib.util
 from pathlib import Path
-from typing import Any, Literal, TypedDict, overload
+from typing import Any, Literal, TypedDict, cast, overload
 
 from openstb.i18n.support import domain_translator
 from openstb.simulator import abc
@@ -171,3 +171,29 @@ def load_plugin(group: str, plugin_spec: PluginSpec) -> abc.Plugin:
         return cls(**plugin_spec.get("parameters", {}))
 
     return plugin_spec
+
+
+# Note: the cast() call in the following functions does no runtime checking, simply
+# returning the value unchanged.  It is used to indicate to a static type checker that
+# return values from the functions will have the specific type rather than the generic
+# Plugin type.
+
+
+def signal_window_plugin(plugin_spec: PluginSpec) -> abc.SignalWindow:
+    """Load a signal window plugin.
+
+    Parameters
+    ----------
+    plugin_spec : PluginSpec
+        If a dictionary, this specifies the name and parameters of the signal window to
+        load. Otherwise, it is assumed to be an instance of a compatible class and is
+        returned unchanged.
+
+    Returns
+    -------
+    signal_window : openstb.simulator.abc.SignalWindow
+
+    """
+    return cast(
+        abc.SignalWindow, load_plugin("openstb.simulator.signal_window", plugin_spec)
+    )

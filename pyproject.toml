@@ -27,6 +27,15 @@ constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"
 [project.entry-points."openstb.simulator.signal"]
 lfm_chirp = "openstb.simulator.system.signal:LFMChirp"
 
+[project.entry-points."openstb.simulator.signal_window"]
+blackman = "openstb.simulator.system.signal_windows:BlackmanWindow"
+blackman_harris = "openstb.simulator.system.signal_windows:BlackmanHarrisWindow"
+generalised_cosine = "openstb.simulator.system.signal_windows:GeneralisedCosineWindow"
+hamming = "openstb.simulator.system.signal_windows:HammingWindow"
+hann = "openstb.simulator.system.signal_windows:HannWindow"
+nuttall = "openstb.simulator.system.signal_windows:NuttallWindow"
+tukey = "openstb.simulator.system.signal_windows:TukeyWindow"
+
 [project.entry-points."openstb.simulator.trajectory"]
 linear = "openstb.simulator.system.trajectory:Linear"
 

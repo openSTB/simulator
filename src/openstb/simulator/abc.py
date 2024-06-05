@@ -60,6 +60,35 @@ class Signal(Plugin):
         pass
 
 
+class SignalWindow(Plugin):
+    """A window which can be applied to a signal."""
+
+    @abstractmethod
+    def get_samples(
+        self, t: ArrayLike, duration: float, fill_value: float = 0
+    ) -> np.ndarray:
+        """Get the samples of the window.
+
+        Parameters
+        ----------
+        t : array-like
+            The times (in seconds) to get window samples for, with t=0 corresponding to
+            the start of the window.
+        duration : float
+            The length of the window in seconds.
+        fill_value : float
+            The value to use for samples outside the window.
+
+        Returns
+        -------
+        samples : numpy.ndarray
+            The samples of the window as an array of floats. Values outside the window
+            should be set to ``fill_value``.
+
+        """
+        pass
+
+
 class Trajectory(Plugin):
     """The trajectory followed by the sonar."""
 

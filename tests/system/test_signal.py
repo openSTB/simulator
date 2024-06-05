@@ -49,7 +49,7 @@ def test_system_signal_lfm(f_start, f_stop, duration):
 
 def test_system_signal_lfm_window():
     """system.signal: LFM signal windowing"""
-    sig = signal.LFMChirp(110e3, 90e-3, 0.01, "hann")
+    sig = signal.LFMChirp(110e3, 90e-3, 0.01, {"name": "hann"})
     t = np.linspace(0, 0.01, 151)
     baseband_freq = 100e3
     s = sig.sample(t, baseband_freq)
@@ -58,8 +58,8 @@ def test_system_signal_lfm_window():
 
 def test_system_signal_lfm_error():
     """system.signal: LFM signal error handling"""
-    with pytest.raises(ValueError, match="unknown window"):
-        signal.LFMChirp(100e3, 140e3, 0.08, "a_window_name")
+    with pytest.raises(ValueError, match="no .+window plugin .+ installed"):
+        signal.LFMChirp(100e3, 140e3, 0.08, {"name": "a_window_name"})
 
-    with pytest.raises(ValueError, match="Tukey window requires alpha"):
-        signal.LFMChirp(100e3, 140e3, 0.08, "tukey")
+    with pytest.raises(TypeError, match="missing .+ argument: 'alpha'"):
+        signal.LFMChirp(100e3, 140e3, 0.08, {"name": "tukey"})
