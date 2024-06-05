@@ -20,6 +20,9 @@ dependencies = [
 # Register included plugins at the appropriate entry points.
 #
 
+[project.entry-points."openstb.simulator.beampattern"]
+rectangular = "openstb.simulator.system.beampattern:Rectangular"
+
 [project.entry-points."openstb.simulator.ping_times"]
 constant_distance = "openstb.simulator.system.ping_times:ConstantDistance"
 constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"
