@@ -28,6 +28,38 @@ class Plugin(ABC):
     pass
 
 
+class Signal(Plugin):
+    """The signal transmitted by the sonar."""
+
+    @property
+    @abstractmethod
+    def duration(self) -> float:
+        """The duration of the signal in seconds."""
+
+    @abstractmethod
+    def sample(self, t: ArrayLike, baseband_frequency: float) -> np.ndarray:
+        """Sample the signal in the baseband.
+
+        Parameters
+        ----------
+        t : array-like
+            The times (in seconds) to sample the signal at with t=0 corresponding to the
+            start of transmission.
+        baseband_frequency : float
+            The reference frequency (in Hz) used to downconvert the signal to the
+            analytic baseband.
+
+        Returns
+        -------
+        samples : numpy.ndarray
+            Complex baseband samples of the signal. Values corresponding to times before
+            transmission starts (t < 0) or after transmission finished (t > duration)
+            should be set to zero.
+
+        """
+        pass
+
+
 class Trajectory(Plugin):
     """The trajectory followed by the sonar."""
 

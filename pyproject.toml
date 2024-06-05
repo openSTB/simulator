@@ -24,6 +24,9 @@ dependencies = [
 constant_distance = "openstb.simulator.system.ping_times:ConstantDistance"
 constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"
 
+[project.entry-points."openstb.simulator.signal"]
+lfm_chirp = "openstb.simulator.system.signal:LFMChirp"
+
 [project.entry-points."openstb.simulator.trajectory"]
 linear = "openstb.simulator.system.trajectory:Linear"
 
