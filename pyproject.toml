@@ -23,6 +23,10 @@ dependencies = [
 [project.entry-points."openstb.simulator.beampattern"]
 rectangular = "openstb.simulator.system.beampattern:Rectangular"
 
+[project.entry-points."openstb.simulator.cluster"]
+local = "openstb.simulator.cluster:LocalCluster"
+mpi = "openstb.simulator.cluster:MPICluster"
+
 [project.entry-points."openstb.simulator.ping_times"]
 constant_distance = "openstb.simulator.system.ping_times:ConstantDistance"
 constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"
@@ -71,11 +75,20 @@ domain = "openstb.simulator"
 testpaths = "tests"
 addopts = [
   "--import-mode=importlib",
-  "--cov=openstb.simulator", "--cov-report=html:tests/coverage", "--cov-branch",
+  "--cov=openstb.simulator", "--cov-report=html:tests/coverage",
+]
+markers = [
+  "cluster: tests which involve starting a cluster (exclude with -m 'not cluster')",
+]
+
+[tool.coverage.run]
+branch = true
+omit = [
+  "*/openstb/i18n/*",
+  "*/test_plugin_modules/*",
 ]
 
 [tool.coverage.report]
-
 exclude_lines = [
   "pragma:no cover",
   "^\\s*pass\\s*$",

@@ -18,7 +18,10 @@ detailed checking.
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+from types import TracebackType
+from typing import overload
 
+import dask.distributed
 import numpy as np
 from numpy.typing import ArrayLike
 import quaternionic
@@ -56,6 +59,63 @@ class Beampattern(Plugin):
 
         """
         pass
+
+
+class Cluster(Plugin):
+    """Interface to a Dask cluster to perform computations.
+
+    A Cluster plugin is responsible for configuring Dask to use the desired computing
+    environment, whether that is a collection of processes on the local computer or
+    within a high performance computing (HPC) system.
+
+    Note that this base class implements a context manager which calls `initialise` on
+    entry (returning the Client to use) and `terminate` on exit. This should be
+    acceptable for most plugins, but can be overridden if needed.
+
+    """
+
+    @abstractmethod
+    def initialise(self) -> dask.distributed.Client:
+        """Initialise the cluster for use.
+
+        Returns
+        -------
+        client : dask.distributed.Client
+            The client interface used to submit tasks to the cluster.
+
+        """
+        pass
+
+    def terminate(self):
+        """Terminate use of the cluster.
+
+        The default implementation does nothing. Plugins should implement this function
+        if needed to cleanly stop the cluster.
+
+        """
+        pass
+
+    def __enter__(self) -> dask.distributed.Client:
+        return self.initialise()
+
+    @overload
+    def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None: ...
+
+    @overload
+    def __exit__(
+        self,
+        exc_type: type[BaseException],
+        exc_val: BaseException,
+        exc_tb: TracebackType,
+    ) -> None: ...
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        self.terminate()
 
 
 class Signal(Plugin):

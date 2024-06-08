@@ -16,3 +16,6 @@ src/openstb/locale
 # Test coverage reports.
 .coverage
 tests/coverage
+
+# Scratch space which Dask may create during testing.
+dask-scratch-space/
