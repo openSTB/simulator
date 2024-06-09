@@ -290,3 +290,70 @@ class PingTimes(Plugin):
 
         """
         pass
+
+
+class TravelTime(Plugin):
+    """Calculates the time taken for a pulse to travel to a target and back."""
+
+    @abstractmethod
+    def calculate(
+        self,
+        trajectory: Trajectory,
+        ping_time: float,
+        tx_position: ArrayLike,
+        rx_positions: ArrayLike,
+        target_positions: ArrayLike,
+        sound_speed: float,
+    ) -> tuple[
+        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray | None
+    ]:
+        """Calculate the two-way travel time.
+
+        Parameters
+        ----------
+        trajectory : openstb.simulator.abc.Trajectory
+            A trajectory plugin instance representing the trajectory followed by the
+            system carrying the sonar.
+        ping_time : float
+            The time, in seconds relative to the start of the trajectory, that the ping
+            transmission was started.
+        tx_position : array-like
+            The position of the transmitter in the vehicle coordinate system. This must
+            be a vector of length 3 containing the x, y and z components of the
+            position.
+        rx_positions : array-like
+            The positions of each receiver in the vehicle coordinate system. This must
+            be an array of shape (Nr, 3) containing the x, y and z components of the
+            position for all Nr receivers.
+        target_positions : array-like
+            The position of each target in the global coordinate system. This must be an
+            array of shape (Nt, 3) containing the x, y and z components of all Nt
+            targets.
+        sound_speed : float
+            The speed of sound in metres per second.
+
+        Returns
+        -------
+        travel_time : np.ndarray
+            An array of shape (Nr, Nt) containing the two-way travel time (in seconds)
+            for the pulse to travel from the transmitter to each target and then back to
+            each receiver.
+        tx_vec : np.ndarray
+            An array of shape (Nt, 3) with unit vectors for the direction the pulse left
+            the transmitter in to reach each target.
+        tx_pathlen : np.ndarray
+            An array of shape (Nt,) with the total path length, in metres, that the
+            pulse followed from the transmitter to each target.
+        rx_vec : np.ndarray
+            An array of shape (Nr, Nt, 3) with unit vectors for the direction the echo
+            from each target was travelling when it reached each receiver.
+        rx_pathlen : np.ndarray
+            An array of shape (Nr, Nt) with the total path length, in metres, that the
+            echo from each target took to reach each receiver.
+        scale_factor : np.ndarray, optional
+            An array of shape (Nr, Nt) with multiplicative scale factors to apply to
+            each target, e.g., due to attenuation or geometric spreading loss. Return
+            None if there are no factors to be applied.
+
+        """
+        pass
