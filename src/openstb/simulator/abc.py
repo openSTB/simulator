@@ -179,6 +179,52 @@ class SignalWindow(Plugin):
         pass
 
 
+class Target(Plugin):
+    """A target in the scene being simulated.
+
+    The initialiser of a target plugin should only perform basic error checking. At the
+    point when it is initialised, there may be other plugins not yet initialised that
+    will subsequently fail initialisation. Expensive computations should be placed in
+    the `prepare` method which will only be called once all plugins have successfully
+    been initialised.
+
+    Note that any properties or methods defined by a plugin may not be usable until
+    its `prepare` method has been run.
+
+    """
+
+    def prepare(self) -> None:
+        """Prepare the target for simulation."""
+        pass
+
+
+class PointTargets(Target):
+    """A target made up of simple point targets.
+
+    Note that these targets have no directional or material information, and so only
+    simple scattering with a constant amplitude scaling of the incident pulse is
+    possible.
+
+    """
+
+    @abstractmethod
+    def __len__(self) -> int:
+        """The number of point targets."""
+        pass
+
+    @property
+    @abstractmethod
+    def position(self) -> np.ndarray:
+        """An Nx3 array of the position of each point target."""
+        pass
+
+    @property
+    @abstractmethod
+    def reflectivity(self) -> np.ndarray:
+        """An Nx1 array of the amplitude scale factor used to model scattering."""
+        pass
+
+
 class Trajectory(Plugin):
     """The trajectory followed by the sonar."""
 

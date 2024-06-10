@@ -43,6 +43,9 @@ hann = "openstb.simulator.system.signal_windows:HannWindow"
 nuttall = "openstb.simulator.system.signal_windows:NuttallWindow"
 tukey = "openstb.simulator.system.signal_windows:TukeyWindow"
 
+[project.entry-points."openstb.simulator.target"]
+random_point_rectangle = "openstb.simulator.target.points:RandomPointRect"
+
 [project.entry-points."openstb.simulator.trajectory"]
 linear = "openstb.simulator.system.trajectory:Linear"
 
