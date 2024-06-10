@@ -9,9 +9,6 @@ windows are created from the number of coefficients. Here, the windows are creat
 the times of the signal samples and the signal duration, and values outside the signal
 are set to a fill value.
 
-Note that these windows are not plugins, but are designed to be called from within
-signal plugins to simplify their implementation.
-
 """
 
 import numpy as np
