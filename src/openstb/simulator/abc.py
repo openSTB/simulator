@@ -119,6 +119,34 @@ class Cluster(Plugin):
         self.terminate()
 
 
+class Environment(Plugin):
+    """Properties of the environment the sonar is operating in."""
+
+    @abstractmethod
+    def sound_speed(self, t: ArrayLike, position: ArrayLike) -> np.ndarray:
+        """Get the speed of sound.
+
+        Parameters
+        ----------
+        t : array-like
+            The times of interest in seconds since the start of the trajectory.
+        position : array-like
+            The positions of interest in global coordinates. This must have a final axis
+            of size 3 containing the coordinates. All other axes must be broadcastable
+            with ``t``.
+
+        Returns
+        -------
+        sound_speed : numpy.ndarray
+            The speed of sound in metres per second at the requested times and
+            positions. This will be compatible with the broadcast shape of ``t`` and
+            ``position`` (ignoring the final axis of ``position``). Some axes
+            may have size one if the sound speed is constant along them.
+
+        """
+        pass
+
+
 class Signal(Plugin):
     """The signal transmitted by the sonar."""
 

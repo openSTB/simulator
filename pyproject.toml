@@ -41,6 +41,9 @@ rectangular = "openstb.simulator.system.beampattern:Rectangular"
 local = "openstb.simulator.cluster:LocalCluster"
 mpi = "openstb.simulator.cluster:MPICluster"
 
+[project.entry-points."openstb.simulator.environment"]
+invariant = "openstb.simulator.environment:InvariantEnvironment"
+
 [project.entry-points."openstb.simulator.ping_times"]
 constant_distance = "openstb.simulator.system.ping_times:ConstantDistance"
 constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"

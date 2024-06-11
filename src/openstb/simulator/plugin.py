@@ -182,6 +182,12 @@ def cluster(plugin_spec: PluginSpec) -> abc.Cluster:
     return cast(abc.Cluster, load_plugin("openstb.simulator.cluster", plugin_spec))
 
 
+def environment(plugin_spec: PluginSpec) -> abc.Environment:
+    return cast(
+        abc.Environment, load_plugin("openstb.simulator.environment", plugin_spec)
+    )
+
+
 def ping_times(plugin_spec: PluginSpec) -> abc.PingTimes:
     return cast(abc.PingTimes, load_plugin("openstb.simulator.ping_times", plugin_spec))
 
