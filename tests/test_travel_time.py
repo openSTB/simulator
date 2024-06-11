@@ -22,12 +22,15 @@ def test_tt_stopandhop():
     )
 
     # Transmitter is at same x and z, so easy calculation.
+    assert np.allclose(result.tx_position, [0, 1, 0])
     assert np.allclose(result.tx_vector, [0, 1, 0])
     assert np.allclose(result.tx_path_length, [29, 39])
 
     # First receiver is at same x and z, others at varying z.
     l0 = np.sqrt(29**2 + 1)
     l1 = np.sqrt(39**2 + 1)
+    assert result.rx_position.shape == (3, 1, 3)  # not (3, 2, 3) but broadcastable
+    assert np.allclose(result.rx_position, [[[0, 1, 0]], [[0, 1, -1]], [[0, 1, 1]]])
     assert np.allclose(result.rx_path_length, [[29, 39], [l0, l1], [l0, l1]])
     assert np.allclose(
         result.rx_vector,

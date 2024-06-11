@@ -341,12 +341,23 @@ class PingTimes(Plugin):
 
 @dataclass(slots=True, eq=False, order=False)
 class TravelTimeResult:
-    """Results of a travel time calculation."""
+    """Results of a travel time calculation.
+
+    Note that the arrays must have the expected number of dimensions, but any of the
+    axes may be length 1 if the results are repeated along that axis. For example,
+    `rx_position` may have shape (N_receivers, 1, 3) if the receivers are in the same
+    position for all echoes.
+
+    """
 
     #: An array of shape (N_receivers, N_targets) containing the two-way travel time in
     #: seconds for the pulse to travel from the transmitter to each target and then back
     #: to each target.
     travel_time: np.ndarray
+
+    #: An array of shape (3,) with the position of the transmitter in global coordinates
+    #: when the transmission started.
+    tx_position: np.ndarray
 
     #: An array of shape (N_targets, 3) with unit vectors for the direction the pulse
     #: left the transmitter in to reach each target.
@@ -355,6 +366,10 @@ class TravelTimeResult:
     #: An array of shape (N_targets,) with the total path length, in metres, that the
     #: pulse followed from the transmitter to each target.
     tx_path_length: np.ndarray
+
+    #: An array of shape (N_receivers, N_targets, 3) with the position of the receivers
+    #: in global coordinates when the echoes reached the receivers.
+    rx_position: np.ndarray
 
     #: An array of shape (N_receivers, N_targets, 3) with unit vectors for the direction
     #: the echo from each target was travelling when it reached each receiver.

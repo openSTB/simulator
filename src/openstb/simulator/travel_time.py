@@ -61,8 +61,10 @@ class StopAndHop(TravelTime):
 
         return TravelTimeResult(
             travel_time=tt,
+            tx_position=tx_pos,
             tx_vector=tx_vec,
             tx_path_length=tx_pathlen,
+            rx_position=rx_pos[:, np.newaxis, :],
             rx_vector=rx_vec,
             rx_path_length=rx_pathlen,
             scale_factor=None,
