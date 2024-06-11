@@ -18,6 +18,16 @@ class StopAndHop(TravelTime):
 
     """
 
+    def __init__(self, sound_speed: float):
+        """
+        Parameters
+        ----------
+        sound_speed : float
+            The speed (in metres/second) that sound travels at in the medium.
+
+        """
+        self.sound_speed = sound_speed
+
     def calculate(
         self,
         trajectory: Trajectory,
@@ -25,7 +35,6 @@ class StopAndHop(TravelTime):
         tx_position: ArrayLike,
         rx_positions: ArrayLike,
         target_positions: ArrayLike,
-        sound_speed: float,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, None]:
         # Find the position and orientation of the vehicle at the start of the ping...
         vehicle_pos = trajectory.position(ping_time)
@@ -44,7 +53,7 @@ class StopAndHop(TravelTime):
         rx_pathlen = np.sqrt(np.sum(rx_vec**2, axis=-1))
 
         # Travel time is an easy calculation.
-        tt = (tx_pathlen + rx_pathlen) / sound_speed
+        tt = (tx_pathlen + rx_pathlen) / self.sound_speed
 
         # Normalise the vectors to give the transmit and receive directions.
         tx_vec /= tx_pathlen[:, np.newaxis]

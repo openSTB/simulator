@@ -9,7 +9,7 @@ from openstb.simulator.system.trajectory import Linear
 
 def test_tt_stopandhop():
     """travel_time: stop-and-hop travel time calculations"""
-    ttcalc = travel_time.StopAndHop()
+    ttcalc = travel_time.StopAndHop(1500.0)
 
     # Trajectory along the y axis. At 1m/s, the system will be at (0, 0, 0) at time 10s.
     traj = Linear([-10, 0, 0], [10, 0, 0], 1.0)
@@ -19,7 +19,6 @@ def test_tt_stopandhop():
         [0, 1, 0],
         [[0, 1, 0], [0, 1, -1], [0, 1, 1]],
         [[0, 30, 0], [0, 40, 0]],
-        1500.0,
     )
 
     # Transmitter is at same x and z, so easy calculation.

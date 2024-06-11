@@ -349,7 +349,6 @@ class TravelTime(Plugin):
         tx_position: ArrayLike,
         rx_positions: ArrayLike,
         target_positions: ArrayLike,
-        sound_speed: float,
     ) -> tuple[
         np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray | None
     ]:
@@ -375,8 +374,6 @@ class TravelTime(Plugin):
             The position of each target in the global coordinate system. This must be an
             array of shape (Nt, 3) containing the x, y and z components of all Nt
             targets.
-        sound_speed : float
-            The speed of sound in metres per second.
 
         Returns
         -------
