@@ -359,8 +359,12 @@ class TravelTimeResult:
     #: when the transmission started.
     tx_position: np.ndarray
 
-    #: An array of shape (N_targets, 3) with unit vectors for the direction the pulse
-    #: left the transmitter in to reach each target.
+    #: A quaternion array of shape (4,) with the orientation of the transmitter in the
+    #: global system when the transmission started.
+    tx_orientation: quaternionic.QArray
+
+    #: An array of shape (N_targets, 3) with unit vectors in the transmitter coordinate
+    #: system for the direction the pulse left the transmitter at to reach each target.
     tx_vector: np.ndarray
 
     #: An array of shape (N_targets,) with the total path length, in metres, that the
@@ -371,8 +375,13 @@ class TravelTimeResult:
     #: in global coordinates when the echoes reached the receivers.
     rx_position: np.ndarray
 
-    #: An array of shape (N_receivers, N_targets, 3) with unit vectors for the direction
-    #: the echo from each target was travelling when it reached each receiver.
+    #: A quaternion array of shape (N_receivers, N_targets, 4) with the orientation of
+    #: the receivers in the global system when the echoes reached them.
+    rx_orientation: quaternionic.QArray
+
+    #: An array of shape (N_receivers, N_targets, 3) with unit vectors in the receiver
+    #: coordinate system for the direction the echo from each target was travelling when
+    #: it reached each receiver.
     rx_vector: np.ndarray
 
     #: An array of shape (N_receivers, N_targets) with the total path length, in metres,
@@ -394,7 +403,9 @@ class TravelTime(Plugin):
         trajectory: Trajectory,
         ping_time: float,
         tx_position: ArrayLike,
+        tx_orientation: ArrayLike | quaternionic.QArray,
         rx_positions: ArrayLike,
+        rx_orientations: ArrayLike | quaternionic.QArray,
         target_positions: ArrayLike,
     ) -> TravelTimeResult:
         """Calculate the two-way travel time.

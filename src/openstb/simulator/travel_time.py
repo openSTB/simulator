@@ -5,6 +5,7 @@
 
 import numpy as np
 from numpy.typing import ArrayLike
+import quaternionic
 
 from openstb.simulator.abc import Trajectory, TravelTime, TravelTimeResult
 
@@ -33,16 +34,20 @@ class StopAndHop(TravelTime):
         trajectory: Trajectory,
         ping_time: float,
         tx_position: ArrayLike,
+        tx_orientation: ArrayLike | quaternionic.QArray,
         rx_positions: ArrayLike,
+        rx_orientations: ArrayLike | quaternionic.QArray,
         target_positions: ArrayLike,
     ) -> TravelTimeResult:
         # Find the position and orientation of the vehicle at the start of the ping...
         vehicle_pos = trajectory.position(ping_time)
         vehicle_ori = trajectory.orientation(ping_time)
 
-        # ... and from that the tx and rx positions.
+        # ... and from that the tx and rx details.
         tx_pos = vehicle_pos + vehicle_ori.rotate(np.asarray(tx_position))
+        tx_ori = quaternionic.array(tx_orientation) * vehicle_ori
         rx_pos = vehicle_pos + vehicle_ori.rotate(np.asarray(rx_positions))
+        rx_ori = quaternionic.array(rx_orientations) * vehicle_ori
 
         # Vector from tx to target and target to rx.
         tx_vec = target_positions - tx_pos
@@ -59,12 +64,18 @@ class StopAndHop(TravelTime):
         tx_vec /= tx_pathlen[:, np.newaxis]
         rx_vec /= rx_pathlen[:, :, np.newaxis]
 
+        # And rotate these into the transducer coordinate systems.
+        tx_vec = (~tx_ori).rotate(tx_vec)
+        rx_vec = (~rx_ori).rotate(rx_vec)
+
         return TravelTimeResult(
             travel_time=tt,
             tx_position=tx_pos,
+            tx_orientation=tx_ori,
             tx_vector=tx_vec,
             tx_path_length=tx_pathlen,
             rx_position=rx_pos[:, np.newaxis, :],
+            rx_orientation=rx_ori[:, np.newaxis, :],
             rx_vector=rx_vec,
             rx_path_length=rx_pathlen,
             scale_factor=None,

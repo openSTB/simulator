@@ -8,6 +8,7 @@ from typing import TypedDict
 import distributed
 import numpy as np
 from numpy.typing import ArrayLike
+import quaternionic
 import zarr
 
 from openstb.i18n.support import domain_translator
@@ -23,6 +24,10 @@ class PointSimulatorConfigDict(TypedDict):
     #: Plugin which will calculate ping start times.
     ping_times: abc.PingTimes
 
+    #: Orientation of the receivers relative to the system. Must be an Nr x 4 array
+    #: where Nr is the number of receivers.
+    receiver_orientation: ArrayLike | quaternionic.QArray
+
     #: Position of each receiver in the vehicle coordinate system. Must be an Nr x 3
     #: array where Nr is the number of receivers.
     receiver_position: ArrayLike
@@ -35,6 +40,10 @@ class PointSimulatorConfigDict(TypedDict):
 
     #: Plugin specifying the trajectory followed by the system.
     trajectory: abc.Trajectory
+
+    #: Orientation of the transmitter relative to the system. Must be an array of shape
+    #: (4,) i.e., only a single transmitter.
+    transmitter_orientation: ArrayLike | quaternionic.QArray
 
     #: Position of the transmitter in the vehicle coordinate system. Must be an array of
     #: shape (3,) i.e., only a single transmitter.
@@ -52,11 +61,18 @@ def _pointsim_chunk(
     trajectory: abc.Trajectory,
     ping_time: float,
     tx_position: np.ndarray,
+    tx_ori: np.ndarray,
     rx_position: np.ndarray,
+    rx_ori: np.ndarray,
 ):
-
     tt_result = travel_time.calculate(
-        trajectory, ping_time, tx_position, rx_position.reshape(1, 3), target_pos
+        trajectory,
+        ping_time,
+        tx_position,
+        tx_ori,
+        rx_position.reshape(1, 3),
+        rx_ori,
+        target_pos,
     )
 
     Schunk = S[:, np.newaxis] * np.exp(
@@ -102,6 +118,15 @@ class PointSimulator:
             raise ValueError(_("invalid shape for receiver position array"))
         Nr = rx_position.shape[0]
 
+        # And their orientations.
+        tx_ori = np.array(config["transmitter_orientation"])
+        if tx_ori.shape != (4,):
+            raise ValueError(_("invalid shape for transmitter orientation array"))
+
+        rx_ori = np.array(config["receiver_orientation"])
+        if rx_ori.shape != (Nr, 4):
+            raise ValueError(_("invalid shape for receiver orientation array"))
+
         # Calculate the ping start times.
         ping_start = config["ping_times"].calculate(config["trajectory"])
         Np = len(ping_start)
@@ -142,6 +167,7 @@ class PointSimulator:
             travel_time=client.scatter(config["travel_time"], broadcast=True),
             trajectory=client.scatter(config["trajectory"], broadcast=True),
             tx_position=client.scatter(tx_position, broadcast=True),
+            tx_ori=client.scatter(tx_ori, broadcast=True),
         )
 
         # Prepare the output storage.
@@ -166,6 +192,7 @@ class PointSimulator:
                         _pointsim_chunk,
                         ping_time=ping_start[p],
                         rx_position=rx_position[r],
+                        rx_ori=rx_ori[r],
                         target_pos=chunk,
                         **chunk_args,
                     )
