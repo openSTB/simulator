@@ -174,12 +174,29 @@ def load_plugin(group: str, plugin_spec: PluginSpec) -> abc.Plugin:
 
 
 # Note: the cast() call in the following functions does no runtime checking, simply
-# returning the value unchanged.  It is used to indicate to a static type checker that
-# return values from the functions will have the specific type rather than the generic
-# Plugin type.
+# returning the value unchanged.  It is used to prevent static type checkers complaining
+# about the return type.
 
 
-def signal_window_plugin(plugin_spec: PluginSpec) -> abc.SignalWindow:
+def cluster(plugin_spec: PluginSpec) -> abc.Cluster:
+    return cast(abc.Cluster, load_plugin("openstb.simulator.cluster", plugin_spec))
+
+
+def ping_times(plugin_spec: PluginSpec) -> abc.PingTimes:
+    return cast(abc.PingTimes, load_plugin("openstb.simulator.ping_times", plugin_spec))
+
+
+def point_targets(plugin_spec: PluginSpec) -> abc.PointTargets:
+    return cast(
+        abc.PointTargets, load_plugin("openstb.simulator.point_targets", plugin_spec)
+    )
+
+
+def signal(plugin_spec: PluginSpec) -> abc.Signal:
+    return cast(abc.Signal, load_plugin("openstb.simulator.signal", plugin_spec))
+
+
+def signal_window(plugin_spec: PluginSpec) -> abc.SignalWindow:
     """Load a signal window plugin.
 
     Parameters
@@ -196,4 +213,16 @@ def signal_window_plugin(plugin_spec: PluginSpec) -> abc.SignalWindow:
     """
     return cast(
         abc.SignalWindow, load_plugin("openstb.simulator.signal_window", plugin_spec)
+    )
+
+
+def trajectory(plugin_spec: PluginSpec) -> abc.Trajectory:
+    return cast(
+        abc.Trajectory, load_plugin("openstb.simulator.trajectory", plugin_spec)
+    )
+
+
+def travel_time(plugin_spec: PluginSpec) -> abc.TravelTime:
+    return cast(
+        abc.TravelTime, load_plugin("openstb.simulator.travel_time", plugin_spec)
     )

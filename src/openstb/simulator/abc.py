@@ -199,7 +199,7 @@ class Target(Plugin):
 
 
 class PointTargets(Target):
-    """A target made up of simple point targets.
+    """An object made up of simple point targets.
 
     Note that these targets have no directional or material information, and so only
     simple scattering with a constant amplitude scaling of the incident pulse is

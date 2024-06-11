@@ -45,6 +45,9 @@ mpi = "openstb.simulator.cluster:MPICluster"
 constant_distance = "openstb.simulator.system.ping_times:ConstantDistance"
 constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"
 
+[project.entry-points."openstb.simulator.point_targets"]
+random_point_rectangle = "openstb.simulator.target.points:RandomPointRect"
+
 [project.entry-points."openstb.simulator.signal"]
 lfm_chirp = "openstb.simulator.system.signal:LFMChirp"
 
@@ -56,9 +59,6 @@ hamming = "openstb.simulator.system.signal_windows:HammingWindow"
 hann = "openstb.simulator.system.signal_windows:HannWindow"
 nuttall = "openstb.simulator.system.signal_windows:NuttallWindow"
 tukey = "openstb.simulator.system.signal_windows:TukeyWindow"
-
-[project.entry-points."openstb.simulator.target"]
-random_point_rectangle = "openstb.simulator.target.points:RandomPointRect"
 
 [project.entry-points."openstb.simulator.trajectory"]
 linear = "openstb.simulator.system.trajectory:Linear"

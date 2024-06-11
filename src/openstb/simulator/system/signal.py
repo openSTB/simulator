@@ -32,7 +32,7 @@ class LFMChirp(abc.Signal):
         self.f_start = f_start
         self.f_stop = f_stop
         self._duration = duration
-        self.window = None if window is None else plugin.signal_window_plugin(window)
+        self.window = None if window is None else plugin.signal_window(window)
 
     @property
     def duration(self) -> float:
