@@ -55,12 +55,12 @@ def _pointsim_chunk(
     rx_position: np.ndarray,
 ):
 
-    tt, tx_vec, tx_pathlen, rx_vec, rx_pathlen, scale_factor = travel_time.calculate(
+    tt_result = travel_time.calculate(
         trajectory, ping_time, tx_position, rx_position.reshape(1, 3), target_pos
     )
 
     Schunk = S[:, np.newaxis] * np.exp(
-        -2j * np.pi * f[:, np.newaxis] * tt[:, np.newaxis, :]
+        -2j * np.pi * f[:, np.newaxis] * tt_result.travel_time[:, np.newaxis, :]
     )
 
     return Schunk.sum(axis=-1).squeeze()

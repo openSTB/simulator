@@ -6,7 +6,7 @@
 import numpy as np
 from numpy.typing import ArrayLike
 
-from openstb.simulator.abc import Trajectory, TravelTime
+from openstb.simulator.abc import Trajectory, TravelTime, TravelTimeResult
 
 
 class StopAndHop(TravelTime):
@@ -35,7 +35,7 @@ class StopAndHop(TravelTime):
         tx_position: ArrayLike,
         rx_positions: ArrayLike,
         target_positions: ArrayLike,
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, None]:
+    ) -> TravelTimeResult:
         # Find the position and orientation of the vehicle at the start of the ping...
         vehicle_pos = trajectory.position(ping_time)
         vehicle_ori = trajectory.orientation(ping_time)
@@ -59,4 +59,11 @@ class StopAndHop(TravelTime):
         tx_vec /= tx_pathlen[:, np.newaxis]
         rx_vec /= rx_pathlen[:, :, np.newaxis]
 
-        return tt, tx_vec, tx_pathlen, rx_vec, rx_pathlen, None
+        return TravelTimeResult(
+            travel_time=tt,
+            tx_vector=tx_vec,
+            tx_path_length=tx_pathlen,
+            rx_vector=rx_vec,
+            rx_path_length=rx_pathlen,
+            scale_factor=None,
+        )

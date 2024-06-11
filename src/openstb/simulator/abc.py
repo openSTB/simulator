@@ -17,6 +17,7 @@ detailed checking.
 """
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from datetime import datetime
 from types import TracebackType
 from typing import overload
@@ -338,6 +339,37 @@ class PingTimes(Plugin):
         pass
 
 
+@dataclass(slots=True, eq=False, order=False)
+class TravelTimeResult:
+    """Results of a travel time calculation."""
+
+    #: An array of shape (N_receivers, N_targets) containing the two-way travel time in
+    #: seconds for the pulse to travel from the transmitter to each target and then back
+    #: to each target.
+    travel_time: np.ndarray
+
+    #: An array of shape (N_targets, 3) with unit vectors for the direction the pulse
+    #: left the transmitter in to reach each target.
+    tx_vector: np.ndarray
+
+    #: An array of shape (N_targets,) with the total path length, in metres, that the
+    #: pulse followed from the transmitter to each target.
+    tx_path_length: np.ndarray
+
+    #: An array of shape (N_receivers, N_targets, 3) with unit vectors for the direction
+    #: the echo from each target was travelling when it reached each receiver.
+    rx_vector: np.ndarray
+
+    #: An array of shape (N_receivers, N_targets) with the total path length, in metres,
+    #: that the echo from each target took to reach each receiver.
+    rx_path_length: np.ndarray
+
+    #: An array of shape (N_receivers, N_targets) with multiplicative scale factors to
+    #: apply to the amplitude of the echo from each target, e.g., due to attenuation or
+    #: geometric spreading loss. If None, no scale factors will be applied.
+    scale_factor: np.ndarray | None = None
+
+
 class TravelTime(Plugin):
     """Calculates the time taken for a pulse to travel to a target and back."""
 
@@ -349,9 +381,7 @@ class TravelTime(Plugin):
         tx_position: ArrayLike,
         rx_positions: ArrayLike,
         target_positions: ArrayLike,
-    ) -> tuple[
-        np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray | None
-    ]:
+    ) -> TravelTimeResult:
         """Calculate the two-way travel time.
 
         Parameters
@@ -377,26 +407,8 @@ class TravelTime(Plugin):
 
         Returns
         -------
-        travel_time : np.ndarray
-            An array of shape (Nr, Nt) containing the two-way travel time (in seconds)
-            for the pulse to travel from the transmitter to each target and then back to
-            each receiver.
-        tx_vec : np.ndarray
-            An array of shape (Nt, 3) with unit vectors for the direction the pulse left
-            the transmitter in to reach each target.
-        tx_pathlen : np.ndarray
-            An array of shape (Nt,) with the total path length, in metres, that the
-            pulse followed from the transmitter to each target.
-        rx_vec : np.ndarray
-            An array of shape (Nr, Nt, 3) with unit vectors for the direction the echo
-            from each target was travelling when it reached each receiver.
-        rx_pathlen : np.ndarray
-            An array of shape (Nr, Nt) with the total path length, in metres, that the
-            echo from each target took to reach each receiver.
-        scale_factor : np.ndarray, optional
-            An array of shape (Nr, Nt) with multiplicative scale factors to apply to
-            each target, e.g., due to attenuation or geometric spreading loss. Return
-            None if there are no factors to be applied.
+        result : TravelTimeResult
+            The result of the calculation.
 
         """
         pass
