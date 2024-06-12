@@ -76,7 +76,7 @@ def _pointsim_chunk(
         tx_position,
         tx_ori,
         rx_position.reshape(1, 3),
-        rx_ori,
+        rx_ori.reshape(1, 4),
         target_pos,
     )
 
