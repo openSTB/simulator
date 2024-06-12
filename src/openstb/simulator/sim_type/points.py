@@ -41,6 +41,9 @@ class PointSimulatorConfigDict(TypedDict):
     #: Plugin specifying the trajectory followed by the system.
     trajectory: abc.Trajectory
 
+    #: Details about the environment the system is operating in.
+    environment: abc.Environment
+
     #: Orientation of the transmitter relative to the system. Must be an array of shape
     #: (4,) i.e., only a single transmitter.
     transmitter_orientation: ArrayLike | quaternionic.QArray
@@ -60,6 +63,7 @@ def _pointsim_chunk(
     travel_time: abc.TravelTime,
     trajectory: abc.Trajectory,
     ping_time: float,
+    environment: abc.Environment,
     tx_position: np.ndarray,
     tx_ori: np.ndarray,
     rx_position: np.ndarray,
@@ -68,6 +72,7 @@ def _pointsim_chunk(
     tt_result = travel_time.calculate(
         trajectory,
         ping_time,
+        environment,
         tx_position,
         tx_ori,
         rx_position.reshape(1, 3),
@@ -168,6 +173,7 @@ class PointSimulator:
             trajectory=client.scatter(config["trajectory"], broadcast=True),
             tx_position=client.scatter(tx_position, broadcast=True),
             tx_ori=client.scatter(tx_ori, broadcast=True),
+            environment=client.scatter(config["environment"], broadcast=True),
         )
 
         # Prepare the output storage.

@@ -7,7 +7,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 import quaternionic
 
-from openstb.simulator.abc import Trajectory, TravelTime, TravelTimeResult
+from openstb.simulator.abc import Environment, Trajectory, TravelTime, TravelTimeResult
 
 
 class StopAndHop(TravelTime):
@@ -19,20 +19,11 @@ class StopAndHop(TravelTime):
 
     """
 
-    def __init__(self, sound_speed: float):
-        """
-        Parameters
-        ----------
-        sound_speed : float
-            The speed (in metres/second) that sound travels at in the medium.
-
-        """
-        self.sound_speed = sound_speed
-
     def calculate(
         self,
         trajectory: Trajectory,
         ping_time: float,
+        environment: Environment,
         tx_position: ArrayLike,
         tx_orientation: ArrayLike | quaternionic.QArray,
         rx_positions: ArrayLike,
@@ -58,7 +49,8 @@ class StopAndHop(TravelTime):
         rx_pathlen = np.sqrt(np.sum(rx_vec**2, axis=-1))
 
         # Travel time is an easy calculation.
-        tt = (tx_pathlen + rx_pathlen) / self.sound_speed
+        sound_speed = environment.sound_speed(ping_time, vehicle_pos)
+        tt = (tx_pathlen + rx_pathlen) / sound_speed
 
         # Normalise the vectors to give the transmit and receive directions.
         tx_vec /= tx_pathlen[:, np.newaxis]

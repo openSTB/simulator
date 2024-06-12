@@ -430,6 +430,7 @@ class TravelTime(Plugin):
         self,
         trajectory: Trajectory,
         ping_time: float,
+        environment: Environment,
         tx_position: ArrayLike,
         tx_orientation: ArrayLike | quaternionic.QArray,
         rx_positions: ArrayLike,

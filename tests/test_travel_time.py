@@ -3,19 +3,20 @@
 
 import numpy as np
 
-from openstb.simulator import travel_time
+from openstb.simulator import environment, travel_time
 from openstb.simulator.system.trajectory import Linear
 
 
 def test_tt_stopandhop():
     """travel_time: stop-and-hop travel time calculations"""
-    ttcalc = travel_time.StopAndHop(1500.0)
+    ttcalc = travel_time.StopAndHop()
 
     # Trajectory along the y axis. At 1m/s, the system will be at (0, 0, 0) at time 10s.
     traj = Linear([-10, 0, 0], [10, 0, 0], 1.0)
     result = ttcalc.calculate(
         traj,
         10.0,
+        environment.InvariantEnvironment(sound_speed=1500.0),
         [0, 1, 0],
         [np.cos(np.pi / 4), 0, 0, np.sin(np.pi / 4)],
         [[0, 1, 0], [0, 1, -1], [0, 1, 1]],
