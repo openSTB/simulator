@@ -18,6 +18,15 @@ class QArray:
     def __invert__(self) -> QArray: ...
     def __mul__(self, other: QArray) -> QArray: ...
 
+    ndarray: np.ndarray
+    w: np.ndarray
+    x: np.ndarray
+    y: np.ndarray
+    z: np.ndarray
+    scalar: np.ndarray
+    vector: np.ndarray
+    mag2: np.ndarray
+
 class _qarray_stub:
     def __call__(self, x: ArrayLike|QArray) -> QArray: ...
     def from_rotation_vector(self, x: np.ndarray) -> QArray: ...
