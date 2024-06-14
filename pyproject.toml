@@ -49,6 +49,8 @@ constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"
 random_point_rectangle = "openstb.simulator.target.points:RandomPointRect"
 
 [project.entry-points."openstb.simulator.scale_factor"]
+anslie_mccolm_attenuation = "openstb.simulator.scale_factor.environmental:AnslieMcColmAttenuation"
+geometric_spreading = "openstb.simulator.scale_factor.environmental:GeometricSpreading"
 rectangular_beampattern = "openstb.simulator.scale_factor.beampattern:RectangularBeampattern"
 
 [project.entry-points."openstb.simulator.signal"]
