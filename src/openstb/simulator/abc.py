@@ -525,3 +525,46 @@ class TravelTime(Plugin):
 
         """
         pass
+
+
+class ScaleFactor(Plugin):
+    """A multiplicative scale factor applied to the amplitude of an echo."""
+
+    @abstractmethod
+    def calculate(
+        self,
+        ping_time: float,
+        f: np.ndarray,
+        environment: Environment,
+        signal_frequency_bounds: tuple[float, float],
+        tt_result: TravelTimeResult,
+    ) -> np.ndarray:
+        """Calculate the scale factor to apply.
+
+        Parameters
+        ----------
+        ping_time : float
+            The time, in seconds relative to the start of the trajectory, that the ping
+            transmission was started.
+        f : numpy.ndarray
+            The frequencies the simulation is being performed at.
+        environment : openstb.simulator.abc.Environment
+            Parameters of the environment the system is operating in.
+        signal_frequency_bounds : tuple
+            A tuple of floats (minimum frequency, maximum frequency) giving the
+            frequency bounds of the transmitted signal.
+        tt_result : openstb.simulator.abc.TravelTimeResult
+            The results of the travel time calculations for this piece of the
+            simulation.
+
+        Returns
+        -------
+        scale_factor : numpy.ndarray
+            Multiplicative scale factors to apply to the echoes. This should have a
+            shape (N_receiver, N_frequencies, N_targets) where N_receiver and N_targets
+            are the number of receivers and targets, respectively, in the travel time
+            results, and N_frequencies is the number of frequencies in ``f``. Any of
+            the axes may be length 1 if the scale factor is constant along that axis.
+
+        """
+        pass

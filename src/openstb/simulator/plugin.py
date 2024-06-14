@@ -198,6 +198,12 @@ def point_targets(plugin_spec: PluginSpec) -> abc.PointTargets:
     )
 
 
+def scale_factor(plugin_spec: PluginSpec) -> abc.ScaleFactor:
+    return cast(
+        abc.ScaleFactor, load_plugin("openstb.simulator.scale_factor", plugin_spec)
+    )
+
+
 def signal(plugin_spec: PluginSpec) -> abc.Signal:
     return cast(abc.Signal, load_plugin("openstb.simulator.signal", plugin_spec))
 

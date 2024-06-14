@@ -55,6 +55,9 @@ class PointSimulatorConfigDict(TypedDict):
     #: Plugin which will calculate the travel times to and from each target.
     travel_time: abc.TravelTime
 
+    #: Plugins which will calculate amplitude scale factors for each echo.
+    scale_factors: list[abc.ScaleFactor]
+
 
 def _pointsim_chunk(
     f: np.ndarray,
@@ -68,6 +71,8 @@ def _pointsim_chunk(
     tx_ori: np.ndarray,
     rx_position: np.ndarray,
     rx_ori: np.ndarray,
+    scale_factors: list[abc.ScaleFactor],
+    signal_frequency_bounds: tuple[float, float],
 ):
     tt_result = travel_time.calculate(
         trajectory,
@@ -83,6 +88,10 @@ def _pointsim_chunk(
     Schunk = S[:, np.newaxis] * np.exp(
         -2j * np.pi * f[:, np.newaxis] * tt_result.travel_time[:, np.newaxis, :]
     )
+    for scale_factor in scale_factors:
+        Schunk *= scale_factor.calculate(
+            ping_time, f, environment, signal_frequency_bounds, tt_result
+        )
 
     return Schunk.sum(axis=-1).squeeze()
 
@@ -148,6 +157,10 @@ class PointSimulator:
         # Calculate the corresponding sample times and evaluate the signal.
         t = np.arange(Ns) / self.sample_rate
         s = config["signal"].sample(t, self.baseband_frequency)
+        signal_frequency_bounds = (
+            config["signal"].minimum_frequency,
+            config["signal"].maximum_frequency,
+        )
 
         # The bulk of the simulation is carried out in the frequency domain.
         f = np.fft.fftshift(np.fft.fftfreq(Ns, 1 / self.sample_rate))
@@ -174,6 +187,10 @@ class PointSimulator:
             tx_position=client.scatter(tx_position, broadcast=True),
             tx_ori=client.scatter(tx_ori, broadcast=True),
             environment=client.scatter(config["environment"], broadcast=True),
+            scale_factors=client.scatter(config["scale_factors"], broadcast=True),
+            signal_frequency_bounds=client.scatter(
+                signal_frequency_bounds, broadcast=True
+            ),
         )
 
         # Prepare the output storage.
