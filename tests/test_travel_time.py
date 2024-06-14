@@ -16,7 +16,9 @@ def test_tt_stopandhop():
     result = ttcalc.calculate(
         traj,
         10.0,
-        environment.InvariantEnvironment(sound_speed=1500.0),
+        environment.InvariantEnvironment(
+            salinity=35, sound_speed=1500.0, temperature=9.6
+        ),
         [0, 1, 0],
         [np.cos(np.pi / 4), 0, 0, np.sin(np.pi / 4)],
         [[0, 1, 0], [0, 1, -1], [0, 1, 1]],

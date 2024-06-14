@@ -9,28 +9,41 @@ from openstb.simulator import environment
 
 def test_environment_invariant():
     """environment: InvariantEnvironment behaviour"""
-    env = environment.InvariantEnvironment(sound_speed=1488.5)
+    values = {
+        "salinity": 34.5,
+        "sound_speed": 1488.5,
+        "temperature": 11.7,
+    }
+    env = environment.InvariantEnvironment(**values)
 
-    c = env.sound_speed(0, [0, 0, 0])
-    assert c.shape == ()
-    assert np.allclose(c, 1488.5)
+    for attr, expected in values.items():
+        method = getattr(env, attr)
 
-    c = env.sound_speed([0, 60, 120], [0, 0, 0])
-    assert c.shape == (1,)
-    assert np.allclose(c, 1488.5)
+        val = method(0, [0, 0, 0])
+        assert val.shape == ()
+        assert np.allclose(val, expected)
 
-    c = env.sound_speed([0, 60, 120], [[0, 0, 0], [90, 0, 0], [180, 0, 0]])
-    assert c.shape == (1,)
-    assert np.allclose(c, 1488.5)
+        val = method([0, 60, 120], [0, 0, 0])
+        assert val.shape == (1,)
+        assert np.allclose(val, expected)
 
-    t = np.array([0, 60, 120])
-    c = env.sound_speed(t[:, np.newaxis], [[0, 0, 0], [90, 0, 0], [180, 0, 0]])
-    assert c.shape == (1, 1)
-    assert np.allclose(c, 1488.5)
+        val = method([0, 60, 120], [[0, 0, 0], [90, 0, 0], [180, 0, 0]])
+        assert val.shape == (1,)
+        assert np.allclose(val, expected)
+
+        t = np.array([0, 60, 120])
+        val = method(t[:, np.newaxis], [[0, 0, 0], [90, 0, 0], [180, 0, 0]])
+        assert val.shape == (1, 1)
+        assert np.allclose(val, expected)
 
 
 def test_environment_invariant_error():
     """environment: InvariantEnvironment error handling"""
-    env = environment.InvariantEnvironment(sound_speed=1488.5)
+    env = environment.InvariantEnvironment(salinity=35, sound_speed=1490, temperature=8)
+
+    with pytest.raises(ValueError, match="cannot be broadcast"):
+        env.salinity([0, 60], [[0, 0, 0], [90, 0, 0], [180, 0, 0]])
     with pytest.raises(ValueError, match="cannot be broadcast"):
         env.sound_speed([0, 60], [[0, 0, 0], [90, 0, 0], [180, 0, 0]])
+    with pytest.raises(ValueError, match="cannot be broadcast"):
+        env.temperature([0, 60], [[0, 0, 0], [90, 0, 0], [180, 0, 0]])

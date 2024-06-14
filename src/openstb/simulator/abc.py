@@ -123,6 +123,30 @@ class Environment(Plugin):
     """Properties of the environment the sonar is operating in."""
 
     @abstractmethod
+    def salinity(self, t: ArrayLike, position: ArrayLike) -> np.ndarray:
+        """Get the salinity of the water.
+
+        Parameters
+        ----------
+        t : array-like
+            The times of interest in seconds since the start of the trajectory.
+        position : array-like
+            The positions of interest in global coordinates. This must have a final axis
+            of size 3 containing the coordinates. All other axes must be broadcastable
+            with ``t``.
+
+        Returns
+        -------
+        salinity : numpy.ndarray
+            The salinity of the water in parts per thousand at the requested times and
+            positions. This will be compatible with the broadcast shape of ``t`` and
+            ``position`` (ignoring the final axis of ``position``). Some axes may have
+            size one if the salinity is constant along them.
+
+        """
+        pass
+
+    @abstractmethod
     def sound_speed(self, t: ArrayLike, position: ArrayLike) -> np.ndarray:
         """Get the speed of sound.
 
@@ -140,8 +164,32 @@ class Environment(Plugin):
         sound_speed : numpy.ndarray
             The speed of sound in metres per second at the requested times and
             positions. This will be compatible with the broadcast shape of ``t`` and
-            ``position`` (ignoring the final axis of ``position``). Some axes
-            may have size one if the sound speed is constant along them.
+            ``position`` (ignoring the final axis of ``position``). Some axes may have
+            size one if the sound speed is constant along them.
+
+        """
+        pass
+
+    @abstractmethod
+    def temperature(self, t: ArrayLike, position: ArrayLike) -> np.ndarray:
+        """Get the temperature of the water.
+
+        Parameters
+        ----------
+        t : array-like
+            The times of interest in seconds since the start of the trajectory.
+        position : array-like
+            The positions of interest in global coordinates. This must have a final axis
+            of size 3 containing the coordinates. All other axes must be broadcastable
+            with ``t``.
+
+        Returns
+        -------
+        sound_speed : numpy.ndarray
+            The temperature in degrees Celsius at the requested times and positions.
+            This will be compatible with the broadcast shape of ``t`` and ``position``
+            (ignoring the final axis of ``position``). Some axes may have size one if
+            the temperature is constant along them.
 
         """
         pass
