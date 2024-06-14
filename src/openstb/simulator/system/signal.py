@@ -31,12 +31,22 @@ class LFMChirp(abc.Signal):
         """
         self.f_start = f_start
         self.f_stop = f_stop
+        self._minimum_frequency = min(f_start, f_stop)
+        self._maximum_frequency = max(f_start, f_stop)
         self._duration = duration
         self.window = None if window is None else plugin.signal_window(window)
 
     @property
     def duration(self) -> float:
         return self._duration
+
+    @property
+    def minimum_frequency(self) -> float:
+        return self._minimum_frequency
+
+    @property
+    def maximum_frequency(self) -> float:
+        return self._maximum_frequency
 
     def sample(self, t: ArrayLike, baseband_frequency: float) -> np.ndarray:
         # Initialise the output array.

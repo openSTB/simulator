@@ -15,6 +15,8 @@ def test_system_signal_lfm(f_start, f_stop, duration):
     """system.signal: LFM signal without windowing"""
     sig = signal.LFMChirp(f_start, f_stop, duration)
     assert sig.duration == pytest.approx(duration)
+    assert sig.minimum_frequency == pytest.approx(min(f_start, f_stop))
+    assert sig.maximum_frequency == pytest.approx(max(f_start, f_stop))
 
     # Sample at twice Nyquist.
     BW = np.abs(f_start - f_stop)

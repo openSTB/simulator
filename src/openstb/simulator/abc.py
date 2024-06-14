@@ -203,6 +203,16 @@ class Signal(Plugin):
     def duration(self) -> float:
         """The duration of the signal in seconds."""
 
+    @property
+    @abstractmethod
+    def minimum_frequency(self) -> float:
+        """The minimum frequency of the signal in Hertz."""
+
+    @property
+    @abstractmethod
+    def maximum_frequency(self) -> float:
+        """The minimum frequency of the signal in Hertz."""
+
     @abstractmethod
     def sample(self, t: ArrayLike, baseband_frequency: float) -> np.ndarray:
         """Sample the signal in the baseband.
