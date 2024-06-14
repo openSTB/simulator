@@ -32,36 +32,6 @@ class Plugin(ABC):
     pass
 
 
-class Beampattern(Plugin):
-    """The far-field beampattern of an aperture."""
-
-    @abstractmethod
-    def evaluate(self, wavelength: ArrayLike, direction: ArrayLike) -> np.ndarray:
-        """Evaluate the beampattern.
-
-        Parameters
-        ----------
-        wavelength : array-like
-            The wavelengths to evaluate at.
-        direction : array-like
-            The unit direction vectors to evaluate for. The last dimension must have
-            size 3 and contain the x, y and z components of the vector, with the x axis
-            being the normal of the transducer, the y axis being the 'width' direction
-            and the z axis being the vertical direction. Excluding the last dimension,
-            this must be broadcastable with ``wavelength``.
-
-        Returns
-        -------
-        amplitude : numpy.array
-            The normalised amplitude of the beampattern. This will have the broadcast
-            shape of the inputs. Directions behind the aperture (i.e., where the x
-            component of ``direction`` is negative) may be set to zero, or may be
-            evaluated.
-
-        """
-        pass
-
-
 class Cluster(Plugin):
     """Interface to a Dask cluster to perform computations.
 
