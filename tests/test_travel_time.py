@@ -31,7 +31,8 @@ def test_tt_stopandhop():
     assert np.allclose(
         np.array(result.tx_orientation), [np.sqrt(2) / 2, 0, 0, np.sqrt(2) / 2]
     )
-    assert np.allclose(result.tx_vector, [1, 0, 0])
+    assert np.allclose(result.tx_velocity, [1, 0, 0])
+    assert np.allclose(result.tx_vector, [0, 1, 0])
     assert np.allclose(result.tx_path_length, [29, 39])
 
     # First receiver is at same x and z, others at varying z.
@@ -43,13 +44,15 @@ def test_tt_stopandhop():
     assert np.allclose(
         np.array(result.rx_orientation), [np.sqrt(2) / 2, 0, 0, np.sqrt(2) / 2]
     )
+    assert result.rx_velocity.shape == (1, 1, 3) # not (3, 2, 3) but broadcastable.
+    assert np.allclose(result.rx_velocity, [1, 0, 0])
     assert np.allclose(result.rx_path_length, [[29, 39], [l0, l1], [l0, l1]])
     assert np.allclose(
         result.rx_vector,
         [
-            [[-1, 0, 0], [-1, 0, 0]],
-            [[-29 / l0, 0, -1 / l0], [-39 / l1, 0, -1 / l1]],
-            [[-29 / l0, 0, 1 / l0], [-39 / l1, 0, 1 / l1]],
+            [[0, -1, 0], [0, -1, 0]],
+            [[0, -29 / l0, -1 / l0], [0, -39 / l1, -1 / l1]],
+            [[0, -29 / l0, 1 / l0], [0, -39 / l1, 1 / l1]],
         ],
     )
 

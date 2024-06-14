@@ -8,7 +8,6 @@ from numpy.typing import ArrayLike
 import quaternionic
 
 from openstb.simulator.abc import Environment, Trajectory, TravelTime, TravelTimeResult
-from openstb.simulator.util import rotate_elementwise
 
 
 class StopAndHop(TravelTime):
@@ -33,6 +32,7 @@ class StopAndHop(TravelTime):
     ) -> TravelTimeResult:
         # Find the position and orientation of the vehicle at the start of the ping...
         vehicle_pos = trajectory.position(ping_time)
+        vehicle_vel = trajectory.velocity(ping_time)
         vehicle_ori = trajectory.orientation(ping_time)
 
         # ... and from that the tx and rx details.
@@ -41,10 +41,11 @@ class StopAndHop(TravelTime):
         rx_pos = vehicle_pos + vehicle_ori.rotate(np.asarray(rx_positions))
         rx_ori = quaternionic.array(rx_orientations) * vehicle_ori
 
-        # The rx position and orientation are the same for all targets; add a dummy
-        # target axis in.
+        # The rx details are the same for all targets; add a dummy target axis in. The
+        # velocity is the same for all receivers, so add another dummy axis in.
         rx_pos = rx_pos[:, np.newaxis, :]
         rx_ori = rx_ori[:, np.newaxis, :]
+        rx_vel = vehicle_vel[np.newaxis, np.newaxis, :]
 
         # Vector from tx to targets and targets to rx.
         tx_vec = target_positions - tx_pos
@@ -62,18 +63,16 @@ class StopAndHop(TravelTime):
         tx_vec /= tx_pathlen[:, np.newaxis]
         rx_vec /= rx_pathlen[:, :, np.newaxis]
 
-        # And rotate these into the transducer coordinate systems.
-        tx_vec = rotate_elementwise(~tx_ori, tx_vec)
-        rx_vec = rotate_elementwise(~rx_ori, rx_vec)
-
         return TravelTimeResult(
             travel_time=tt,
             tx_position=tx_pos,
             tx_orientation=tx_ori,
+            tx_velocity=vehicle_vel,
             tx_vector=tx_vec,
             tx_path_length=tx_pathlen,
             rx_position=rx_pos,
             rx_orientation=rx_ori,
+            rx_velocity=rx_vel,
             rx_vector=rx_vec,
             rx_path_length=rx_pathlen,
             scale_factor=None,

@@ -449,7 +449,11 @@ class TravelTimeResult:
     #: global system when the transmission started.
     tx_orientation: quaternionic.QArray
 
-    #: An array of shape (N_targets, 3) with unit vectors in the transmitter coordinate
+    #: An array of shape (3,) with velocity vectors of the sonar in the global system
+    #: at the time the transmission started.
+    tx_velocity: np.ndarray
+
+    #: An array of shape (N_targets, 3) with unit vectors in the global coordinate
     #: system for the direction the pulse left the transmitter at to reach each target.
     tx_vector: np.ndarray
 
@@ -465,7 +469,11 @@ class TravelTimeResult:
     #: the receivers in the global system when the echoes reached them.
     rx_orientation: quaternionic.QArray
 
-    #: An array of shape (N_receivers, N_targets, 3) with unit vectors in the receiver
+    #: An array of shape (N_receivers, N_targets, 3) with velocity vectors of the sonar
+    #: in the global system at the time the echoes were received.
+    rx_velocity: np.ndarray
+
+    #: An array of shape (N_receivers, N_targets, 3) with unit vectors in the global
     #: coordinate system for the direction the echo from each target was travelling when
     #: it reached each receiver.
     rx_vector: np.ndarray
