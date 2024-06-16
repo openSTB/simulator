@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+from dataclasses import dataclass
 import os
 from pathlib import Path
 from typing import TypedDict
@@ -59,38 +60,43 @@ class PointSimulatorConfigDict(TypedDict):
     scale_factors: list[abc.ScaleFactor]
 
 
-def _pointsim_chunk(
-    f: np.ndarray,
-    S: np.ndarray,
-    target_pos: np.ndarray,
-    travel_time: abc.TravelTime,
-    trajectory: abc.Trajectory,
-    ping_time: float,
-    environment: abc.Environment,
-    tx_position: np.ndarray,
-    tx_ori: np.ndarray,
-    rx_position: np.ndarray,
-    rx_ori: np.ndarray,
-    scale_factors: list[abc.ScaleFactor],
-    signal_frequency_bounds: tuple[float, float],
-):
-    tt_result = travel_time.calculate(
-        trajectory,
+@dataclass(slots=True, eq=False, order=False)
+class _ChunkCommon:
+    f: np.ndarray
+    S: np.ndarray
+    travel_time: abc.TravelTime
+    trajectory: abc.Trajectory
+    environment: abc.Environment
+    tx_position: np.ndarray
+    tx_ori: np.ndarray
+    rx_position: np.ndarray
+    rx_ori: np.ndarray
+    scale_factors: list[abc.ScaleFactor]
+    signal_frequency_bounds: tuple[float, float]
+
+
+def _pointsim_chunk(common: _ChunkCommon, target_pos: np.ndarray, ping_time: float):
+    tt_result = common.travel_time.calculate(
+        common.trajectory,
         ping_time,
-        environment,
-        tx_position,
-        tx_ori,
-        rx_position.reshape(1, 3),
-        rx_ori.reshape(1, 4),
+        common.environment,
+        common.tx_position,
+        common.tx_ori,
+        common.rx_position.reshape(1, 3),
+        common.rx_ori.reshape(1, 4),
         target_pos,
     )
 
-    Schunk = S[:, np.newaxis] * np.exp(
-        -2j * np.pi * f[:, np.newaxis] * tt_result.travel_time[:, np.newaxis, :]
+    Schunk = common.S[:, np.newaxis] * np.exp(
+        -2j * np.pi * common.f[:, np.newaxis] * tt_result.travel_time[:, np.newaxis, :]
     )
-    for scale_factor in scale_factors:
+    for scale_factor in common.scale_factors:
         Schunk *= scale_factor.calculate(
-            ping_time, f, environment, signal_frequency_bounds, tt_result
+            ping_time,
+            common.f,
+            common.environment,
+            common.signal_frequency_bounds,
+            tt_result,
         )
 
     return Schunk.sum(axis=-1).squeeze()
@@ -178,19 +184,22 @@ class PointSimulator:
         chunks = np.array_split(config["targets"][0].position, N_chunks)
         chunks = client.scatter(chunks, broadcast=False)
 
-        # Send common details to all workers.
-        chunk_args = dict(
-            f=client.scatter(f, broadcast=True),
-            S=client.scatter(S, broadcast=True),
-            travel_time=client.scatter(config["travel_time"], broadcast=True),
-            trajectory=client.scatter(config["trajectory"], broadcast=True),
-            tx_position=client.scatter(tx_position, broadcast=True),
-            tx_ori=client.scatter(tx_ori, broadcast=True),
-            environment=client.scatter(config["environment"], broadcast=True),
-            scale_factors=client.scatter(config["scale_factors"], broadcast=True),
-            signal_frequency_bounds=client.scatter(
-                signal_frequency_bounds, broadcast=True
+        # Collate and send common details to all workers.
+        common = client.scatter(
+            _ChunkCommon(
+                f=f,
+                S=S,
+                travel_time=config["travel_time"],
+                trajectory=config["trajectory"],
+                tx_position=tx_position,
+                tx_ori=tx_ori,
+                rx_position=rx_position,
+                rx_ori=rx_ori,
+                environment=config["environment"],
+                scale_factors=config["scale_factors"],
+                signal_frequency_bounds=signal_frequency_bounds,
             ),
+            broadcast=True,
         )
 
         # Prepare the output storage.
@@ -213,11 +222,9 @@ class PointSimulator:
                 chunk_futures = [
                     client.submit(
                         _pointsim_chunk,
-                        ping_time=ping_start[p],
-                        rx_position=rx_position[r],
-                        rx_ori=rx_ori[r],
+                        common,
                         target_pos=chunk,
-                        **chunk_args,
+                        ping_time=ping_start[p],
                     )
                     for chunk in chunks
                 ]
