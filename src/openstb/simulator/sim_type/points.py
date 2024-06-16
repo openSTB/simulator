@@ -75,7 +75,7 @@ class _ChunkCommon:
     signal_frequency_bounds: tuple[float, float]
 
 
-def _pointsim_chunk(common: _ChunkCommon, target_pos: np.ndarray, ping_time: float):
+def _pointsim_chunk(common: _ChunkCommon, targets: np.ndarray, ping_time: float):
     tt_result = common.travel_time.calculate(
         common.trajectory,
         ping_time,
@@ -84,12 +84,13 @@ def _pointsim_chunk(common: _ChunkCommon, target_pos: np.ndarray, ping_time: flo
         common.tx_ori,
         common.rx_position.reshape(1, 3),
         common.rx_ori.reshape(1, 4),
-        target_pos,
+        targets[:, :3],
     )
 
     Schunk = common.S[:, np.newaxis] * np.exp(
         -2j * np.pi * common.f[:, np.newaxis] * tt_result.travel_time[:, np.newaxis, :]
     )
+    Schunk *= targets[:, 3]
     for scale_factor in common.scale_factors:
         Schunk *= scale_factor.calculate(
             ping_time,
@@ -180,8 +181,17 @@ class PointSimulator:
         if N_targets == 0:
             raise ValueError(_("no targets to simulate"))
 
+        # Combine into an array of position and reflectivity.
+        targets = np.empty((N_targets, 4), dtype=float)
+        start = 0
+        for target in config["targets"]:
+            targets[start : start + len(target), :3] = target.position
+            targets[start : start + len(target), 3] = target.reflectivity
+            start += len(target)
+
+        # Split into chunks.
         N_chunks = int(np.ceil(N_targets / self.targets_per_chunk))
-        chunks = np.array_split(config["targets"][0].position, N_chunks)
+        chunks = np.array_split(targets, N_chunks)
         chunks = client.scatter(chunks, broadcast=False)
 
         # Collate and send common details to all workers.
@@ -223,7 +233,7 @@ class PointSimulator:
                     client.submit(
                         _pointsim_chunk,
                         common,
-                        target_pos=chunk,
+                        targets=chunk,
                         ping_time=ping_start[p],
                     )
                     for chunk in chunks
