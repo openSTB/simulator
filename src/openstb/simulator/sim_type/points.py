@@ -113,7 +113,11 @@ class PointSimulator:
         max_samples: int | None = None,
         fill_value: complex | str = "nan",
     ):
+        # Do not overwrite existing results.
         self.output_filename = Path(output_filename)
+        if self.output_filename.exists():
+            raise ValueError(_("specified output path already exists"))
+
         self.targets_per_chunk = targets_per_chunk
         self.sample_rate = sample_rate
         self.baseband_frequency = baseband_frequency
@@ -212,12 +216,10 @@ class PointSimulator:
             broadcast=True,
         )
 
-        # Prepare the output storage.
+        # Prepare the output storage. We checked it was non-existent in __init__, but
+        # check again in case the path has been created in the meantime.
         if self.output_filename.exists():
-            import shutil
-
-            shutil.rmtree(self.output_filename)
-
+            raise ValueError(_("specified output path already exists"))
         store = zarr.DirectoryStore(self.output_filename)
         storage = zarr.group(store=store)
         storage.create_dataset(
