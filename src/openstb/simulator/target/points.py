@@ -137,3 +137,34 @@ class RandomPointRect(PointTargets):
     @property
     def reflectivity(self) -> np.ndarray:
         return self._reflectivity
+
+
+class SinglePoint(PointTargets):
+    """A single point target."""
+
+    def __init__(self, position: ArrayLike, reflectivity: float):
+        """
+        Parameters
+        ----------
+        position : array-like
+            The position of the point target in global coordinates.
+        reflectivity : float
+            The reflectivity of the target (the fraction of incident energy that will
+            scatter back to the receiver).
+
+        """
+        self._position = np.array(position).reshape(1, 3)
+        self._reflectivity = np.array(reflectivity).reshape(
+            1,
+        )
+
+    def __len__(self) -> int:
+        return 1
+
+    @property
+    def position(self) -> np.ndarray:
+        return self._position
+
+    @property
+    def reflectivity(self) -> np.ndarray:
+        return self._reflectivity

@@ -121,3 +121,21 @@ def test_target_points_rprect_repeatability():
     assert len(tgt1) == len(tgt2)
     assert np.allclose(tgt1.position, tgt2.position)
     assert np.allclose(tgt1.reflectivity, tgt2.reflectivity)
+
+
+@pytest.mark.parametrize(
+    "position,reflectivity",
+    [
+        ([0, 0, 0], 1),
+        ([10.5, 77.1, 8.8], 0.01),
+    ],
+)
+def test_target_points_single(position, reflectivity):
+    """target.points: SinglePoint"""
+    tgt = points.SinglePoint(position, reflectivity)
+    tgt.prepare()
+    assert len(tgt) == 1
+    assert tgt.position.shape == (1, 3)
+    assert tgt.reflectivity.shape == (1,)
+    assert np.allclose(tgt.position, position)
+    assert np.allclose(tgt.reflectivity, reflectivity)
