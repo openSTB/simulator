@@ -69,21 +69,20 @@ class _ChunkCommon:
     environment: abc.Environment
     tx_position: np.ndarray
     tx_ori: np.ndarray
-    rx_position: np.ndarray
-    rx_ori: np.ndarray
     scale_factors: list[abc.ScaleFactor]
     signal_frequency_bounds: tuple[float, float]
 
 
-def _pointsim_chunk(common: _ChunkCommon, targets: np.ndarray, ping_time: float):
+def _pointsim_chunk(common: _ChunkCommon, targets: np.ndarray, ping_time: float,
+                    rx_position: np.ndarray, rx_ori: np.ndarray):
     tt_result = common.travel_time.calculate(
         common.trajectory,
         ping_time,
         common.environment,
         common.tx_position,
         common.tx_ori,
-        common.rx_position.reshape(1, 3),
-        common.rx_ori.reshape(1, 4),
+        rx_position.reshape(1, 3),
+        rx_ori.reshape(1, 4),
         targets[:, :3],
     )
 
@@ -207,8 +206,6 @@ class PointSimulator:
                 trajectory=config["trajectory"],
                 tx_position=tx_position,
                 tx_ori=tx_ori,
-                rx_position=rx_position,
-                rx_ori=rx_ori,
                 environment=config["environment"],
                 scale_factors=config["scale_factors"],
                 signal_frequency_bounds=signal_frequency_bounds,
@@ -237,6 +234,8 @@ class PointSimulator:
                         common,
                         targets=chunk,
                         ping_time=ping_start[p],
+                        rx_position=rx_position[r],
+                        rx_ori=rx_ori[r],
                     )
                     for chunk in chunks
                 ]
