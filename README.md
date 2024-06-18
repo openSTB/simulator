@@ -13,6 +13,17 @@ by a sonar system. It is currently in the early stages of development, so bugs a
 expected.
 
 
+License
+-------
+
+The simulator is available under the BSD-2-Clause plus patent license, the text of which
+can be found in the `LICENSES/` directory or
+[online](https://spdx.org/licenses/BSD-2-Clause-Patent.html). Some of the supporting
+files are under the Creative Commons Zero v1.0 Universal license (effectively public
+domain). Again, the license is available in the `LICENSES/` directory or
+[online](https://spdx.org/licenses/CC0-1.0.html).
+
+
 Installation
 ------------
 
@@ -28,3 +39,14 @@ add the `MPI` option to the install: `python -m pip install --no-build-isolation
 ".[MPI]"`. To also install tools to help develop code for the framework, add the `dev`
 option: `python -m pip install --no-build-isolation ".[dev]"`. You can give both options
 separated by a comma, i.e., `python -m pip install --no-build-isolation ".[MPI,dev]"`.
+
+
+Running the simulator
+---------------------
+
+At this stage, the simulator can only be used as a library; in the future, a simple CLI
+is planned to run the simulator from a configuration file. See the `example_sim.py`
+script for a simple example simulation. The output of the simulator is stored in a
+[zarr](https://zarr.readthedocs.io/) file. We intend to have a plugin type to convert
+the results into any desired file format in the future. See the `example_sim_plot.py`
+script for examples of how to load and plot the simulation results.

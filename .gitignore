@@ -19,3 +19,6 @@ tests/coverage
 
 # Scratch space which Dask may create during testing.
 dask-scratch-space/
+
+# Output of example simulation.
+example_sim.zarr/
