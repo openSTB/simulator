@@ -26,5 +26,5 @@ environment without access to the support packages). Some optional packages may 
 need to be installed for your use case. If you want to use MPI-based parallelisation,
 add the `MPI` option to the install: `python -m pip install --no-build-isolation
 ".[MPI]"`. To also install tools to help develop code for the framework, add the `dev`
-option: `python -m pip install --no-build-isolation ".[dev]". You can give both options
-separated by a comma, i.e., `python -m pip install --no-build-isolation ".[MPI,dev]".
+option: `python -m pip install --no-build-isolation ".[dev]"`. You can give both options
+separated by a comma, i.e., `python -m pip install --no-build-isolation ".[MPI,dev]"`.
