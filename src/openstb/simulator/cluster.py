@@ -21,7 +21,8 @@ class LocalCluster(Cluster):
     def __init__(
         self,
         workers: int | float,
-        memory: int | float,
+        worker_memory: int | float | None = None,
+        total_memory: int | float | None = None,
         security: bool = True,
         dashboard_address: str | None = None,
     ):
@@ -32,12 +33,12 @@ class LocalCluster(Cluster):
             Number of workers to add to the cluster. If a float, this is interpreted as
             a fraction of the available CPUs. If -1, use all available CPUs. Any other
             value is taken to be the number of CPUs to use.
-        memory : int, float
-            The desired memory limit for the cluster. A float indicates a fraction of
-            the total system memory, and an integer the number of bytes. A positive
-            value gives the limit per worker and a negative value gives the total limit.
-            Note that this limit is enforced on a best-effort basis and some workers may
-            exceed it.
+        worker_memory, total_memory : int, float
+            The desired memory limit for the cluster. This can be specified per worker
+            or for all workers; only one may be given (and one must be given). A float
+            indicates a fraction of the total system memory, and an integer the number
+            of bytes. Note that this limit is enforced on a best-effort basis and some
+            workers may exceed it.
         security : boolean
             If True, self-signed temporary credentials are used to secure communications
             within the cluster. If False, communications are unencrypted.
@@ -56,12 +57,22 @@ class LocalCluster(Cluster):
         else:
             self.workers = workers
 
+        if worker_memory is None and total_memory is None:
+            raise ValueError(_("worker_memory or total_memory must be given"))
+        if worker_memory is not None and total_memory is not None:
+            raise ValueError(
+                _("only one of worker_memory and total_memory can be given")
+            )
+
         # The distributed LocalCluster takes memory per worker.
-        if isinstance(memory, float):
-            memory = int(np.fix(memory * MEMORY_LIMIT))
-        if memory < 0:
-            memory = int(np.fix(np.abs(memory) / self.workers))
-        self.memory = memory
+        if worker_memory is not None:
+            if isinstance(worker_memory, float):
+                worker_memory = int(np.fix(worker_memory * MEMORY_LIMIT))
+            self.memory = worker_memory
+        elif total_memory is not None:
+            if isinstance(total_memory, float):
+                total_memory = int(np.fix(total_memory * MEMORY_LIMIT))
+            self.memory = total_memory // self.workers
 
         self.security = security
         self.dashboard_address = dashboard_address
