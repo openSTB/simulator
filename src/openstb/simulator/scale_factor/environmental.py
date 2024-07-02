@@ -167,4 +167,4 @@ class GeometricSpreading(ScaleFactor):
     ) -> np.ndarray:
         txscale = 1 / (tt_result.tx_path_length**self.power)
         rxscale = 1 / (tt_result.rx_path_length**self.power)
-        return txscale * rxscale
+        return (txscale * rxscale)[:, np.newaxis, :]
