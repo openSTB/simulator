@@ -5,7 +5,7 @@ import numpy as np
 import quaternionic
 
 from openstb.simulator import plugin
-from openstb.simulator.sim_type.points import PointSimulator
+from openstb.simulator.sim_type.points import PointSimulator, PointSimulatorConfig
 
 
 # Set the desired orientation of the transducers. Without rotation, the normal of the
@@ -19,7 +19,7 @@ q_tilt = quaternionic.array.from_rotation_vector([np.radians(15), 0, 0])
 q_transducer = q_tilt * q_yaw
 
 # Begin our configuration dictionary.
-config = {}
+config: PointSimulatorConfig = {}
 
 # Each plugin is defined through a plugin specification dictionary. This takes the name
 # the plugin is registered under (see pyproject.toml for a list of the included plugins)
@@ -185,7 +185,7 @@ config["receiver_orientation"] = [
 
 # Create a cluster on the local machine with 8 workers able to use up to ~40% of the
 # total memory (note that the memory is enforced on a best-effort basis).
-cluster = plugin.cluster(
+config["cluster"] = plugin.dask_cluster(
     {
         "name": "local",
         "parameters": {
@@ -214,5 +214,4 @@ sim = PointSimulator(
 # dashboard at 127.0.0.1:8787 to see various diagnostic plots about how the cluster is
 # being utilised.
 if __name__ == "__main__":
-    with cluster as client:
-        sim.run(client, config)
+    sim.run(config)

@@ -17,10 +17,11 @@ detailed checking.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from types import TracebackType
-from typing import overload
+from typing import Any, Generic, TypeVar, overload
 
 import dask.distributed
 import numpy as np
@@ -32,12 +33,36 @@ class Plugin(ABC):
     pass
 
 
+#: Generic type for the configuration of a simulation. Each type of simulation will
+#: require a different configuration structure. Here we simply say it will be a mapping
+#: from string keys to any type of object, and allow the plugins to define a more
+#: specific type.
+SimTypeConfig = TypeVar("SimTypeConfig", bound=Mapping[str, Any])
+
+
+class SimType(Plugin, Generic[SimTypeConfig]):
+    """A type of simulation."""
+
+    @abstractmethod
+    def run(self, config: SimTypeConfig):
+        """Run the simulation.
+
+        Parameters
+        ----------
+        config : mapping
+            A mapping configuring the simulation. The specific structure will be defined
+            by each plugin.
+
+        """
+        pass
+
+
 class DaskCluster(Plugin):
     """Interface to a Dask cluster to perform computations.
 
-    A Cluster plugin is responsible for configuring Dask to use the desired computing
-    environment, whether that is a collection of processes on the local computer or
-    within a high performance computing (HPC) system.
+    A DaskCluster plugin is responsible for configuring Dask to use the desired
+    computing environment, whether that is a collection of processes on the local
+    computer or within a high performance computing (HPC) system.
 
     Note that this base class implements a context manager which calls `initialise` on
     entry (returning the Client to use) and `terminate` on exit. This should be
