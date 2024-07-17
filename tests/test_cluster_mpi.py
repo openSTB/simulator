@@ -10,12 +10,12 @@ import pytest
 
 # We don't use this directly since the test code runs in a subprocess with mpirun, but
 # without it coverage.py can complain that the module being measured was never imported.
-from openstb.simulator.cluster import MPICluster  # noqa: F401
+from openstb.simulator.cluster import DaskMPICluster  # noqa: F401
 
 
 # mpi4py should be installed as a dependency of dask_mpi, but let's make sure since our
 # tests directly use mpi4py.
-pytest.importorskip("dask_mpi", reason="Need dask_mpi for MPICluster")
+pytest.importorskip("dask_mpi", reason="Need dask_mpi for DaskMPICluster")
 pytest.importorskip("mpi4py", reason="Need mpi4py for tests")
 
 
@@ -41,14 +41,14 @@ if MPI.COMM_WORLD.Get_rank() == 1:
 
 
 from dask.distributed import wait
-from openstb.simulator.cluster import MPICluster
+from openstb.simulator.cluster import DaskMPICluster
 
 
 def workerfunc(i):
     return i, MPI.COMM_WORLD.Get_rank()
 
 
-with MPICluster() as client:
+with DaskMPICluster() as client:
     futures = client.map(workerfunc, [0, 1, 2, 3, 4, 5])
     wait(futures)
 

@@ -32,7 +32,7 @@ class Plugin(ABC):
     pass
 
 
-class Cluster(Plugin):
+class DaskCluster(Plugin):
     """Interface to a Dask cluster to perform computations.
 
     A Cluster plugin is responsible for configuring Dask to use the desired computing

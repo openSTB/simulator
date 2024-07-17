@@ -9,14 +9,14 @@ from distributed.system import MEMORY_LIMIT
 import numpy as np
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator.abc import Cluster
+from openstb.simulator.abc import DaskCluster
 
 
 _ = domain_translator("openstb.simulator", plural=False)
 
 
-class LocalCluster(Cluster):
-    """A cluster running on the local machine."""
+class DaskLocalCluster(DaskCluster):
+    """A Dask cluster running on the local machine."""
 
     def __init__(
         self,
@@ -96,8 +96,8 @@ class LocalCluster(Cluster):
         self._cluster = None
 
 
-class MPICluster(Cluster):
-    """A cluster of nodes communicating via MPI.
+class DaskMPICluster(DaskCluster):
+    """A cluster of Dask nodes communicating via MPI.
 
     This requires the ``dask_mpi`` package to be installed. This uses the ``mpi4py``
     library to communicate via MPI. The process running with MPI rank 0 is used for the

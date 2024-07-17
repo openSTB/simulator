@@ -35,9 +35,9 @@ dev = ["black", "flake8", "isort", "mypy", "openstb-simulator[tests]"]
 # Register included plugins at the appropriate entry points.
 #
 
-[project.entry-points."openstb.simulator.cluster"]
-local = "openstb.simulator.cluster:LocalCluster"
-mpi = "openstb.simulator.cluster:MPICluster"
+[project.entry-points."openstb.simulator.dask_cluster"]
+local = "openstb.simulator.cluster:DaskLocalCluster"
+mpi = "openstb.simulator.cluster:DaskMPICluster"
 
 [project.entry-points."openstb.simulator.environment"]
 invariant = "openstb.simulator.environment:InvariantEnvironment"
