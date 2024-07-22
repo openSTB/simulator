@@ -196,6 +196,38 @@ config["cluster"] = plugin.dask_cluster(
     }
 )
 
+# Internally, the simulation result is stored in a Zarr group. You could choose to
+# directly load the results from this format, or you could configure a conversion plugin
+# to write them to a different format. The following converts the result to an
+# uncompressed NumPy .npz file; this can then be loaded with np.load("example_sim.py")
+# which returns a mapping interface.
+config["result_converter"] = plugin.result_converter(
+    {
+        "name": "numpy",
+        "parameters": {
+            "filename": "example_sim.npz",
+            "compress": False,
+        },
+    }
+)
+
+# If you prefer, you could convert this to a MATLAB file instead. This uses the
+# `scipy.io.savemat` function provided by SciPy; note that this only supports "5"
+# (MATLAB 5 and up) and "4" as the format arguments, and not the newer HDF-backed
+# formats.
+# config["result_converter"] = plugin.result_converter(
+#     {
+#         "name": "matlab",
+#         "parameters": {
+#             "filename": "example_sim.mat",
+#             "format": "5",
+#             "long_field_names": False,
+#             "do_compression": False,
+#             "oned_as": "row",
+#         },
+#     }
+# )
+
 # Initialise the simulator class. In the future, this is intended be a plugin once a
 # suitable interface has been determined. Note that the simulator will refuse to
 # overwrite an existing output file, so you will need to either delete it or change the

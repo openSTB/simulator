@@ -4,7 +4,7 @@
 from dataclasses import dataclass
 import os
 from pathlib import Path
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 import distributed
 import numpy as np
@@ -30,7 +30,7 @@ class PointSimulatorConfig(TypedDict):
 
     #: Orientation of the receivers relative to the system. Must be an Nr x 4 array
     #: where Nr is the number of receivers.
-    receiver_orientation: ArrayLike | quaternionic.QArray
+    receiver_orientation: ArrayLike | quaternionic.QArray | list[quaternionic.QArray]
 
     #: Position of each receiver in the vehicle coordinate system. Must be an Nr x 3
     #: array where Nr is the number of receivers.
@@ -61,6 +61,9 @@ class PointSimulatorConfig(TypedDict):
 
     #: Plugins which will calculate amplitude scale factors for each echo.
     scale_factors: list[abc.ScaleFactor]
+
+    #: Plugin to convert the output into a desired format.
+    result_converter: NotRequired[abc.ResultConverter]
 
 
 @dataclass(slots=True, eq=False, order=False)
@@ -184,6 +187,12 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
         f = np.fft.fftshift(np.fft.fftfreq(Ns, 1 / self.sample_rate))
         S = np.fft.fftshift(np.fft.fft(s))
 
+        if "result_converter" in config:
+            if not config["result_converter"].can_handle(
+                abc.ResultFormat.ZARR_BASEBAND_PRESSURE, config
+            ):
+                raise ValueError(_("output converter cannot handle results"))
+
         # Prepare the targets.
         N_targets = 0
         for target in config["targets"]:
@@ -229,10 +238,16 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
             store = zarr.DirectoryStore(self.output_filename)
             storage = zarr.group(store=store)
             storage.create_dataset(
-                "results", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
+                "pressure", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
             )
             storage.create_dataset("sample_time", shape=(Ns,), chunks=(Ns,), dtype="f8")
             storage["sample_time"][:] = t
+            storage.create_dataset(
+                "ping_start_time", shape=(Np,), chunks=(Np,), dtype="f8"
+            )
+            storage["ping_start_time"][:] = ping_start
+            storage.attrs.baseband_frequency = self.baseband_frequency
+            storage.attrs.fill_value = self.fill_value
 
             for p in range(Np):
                 for r in range(Nr):
@@ -270,7 +285,7 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
 
                     # Wait until the result is available and store.
                     distributed.wait(ping_result)
-                    storage["results"][p, r, :] = ping_result.result()
+                    storage["pressure"][p, r, :] = ping_result.result()
                     del ping_result
 
             # Remove references to the data we scattered at the start. Although this
@@ -280,3 +295,10 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
             # a loss of computed tasks.
             del chunks
             del common
+
+        if "result_converter" in config:
+            success = config["result_converter"].convert(
+                abc.ResultFormat.ZARR_BASEBAND_PRESSURE, storage, config
+            )
+            if success:
+                zarr.storage.rmdir(store)

@@ -20,6 +20,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from types import TracebackType
 from typing import Any, Generic, TypeVar, overload
 
@@ -568,6 +569,74 @@ class ScaleFactor(Plugin):
             are the number of receivers and targets, respectively, in the travel time
             results, and N_frequencies is the number of frequencies in ``f``. Any of
             the axes may be length 1 if the scale factor is constant along that axis.
+
+        """
+        pass
+
+
+class ResultFormat(Enum):
+    """Standard formats the simulation type plugins may use for storing results."""
+
+    #: A Zarr group for baseband pressure simulations. This has variables sample_time,
+    #: ping_start_time and pressure, and attributes baseband_frequency, sample_frequency
+    #: and fill_value.
+    ZARR_BASEBAND_PRESSURE = 1
+
+
+class ResultConverter(Plugin):
+    """Convert a simulator result from its internal format to a desired format."""
+
+    @abstractmethod
+    def can_handle(self, format: ResultFormat | str, config: SimTypeConfig) -> bool:
+        """Check if this plugin will be able to convert a simulation result.
+
+        Parameters
+        ----------
+        format : ResultFormat, str
+            The format of the simulation result. Simulation type plugins provided by the
+            main package will use one of the values from the `ResultFormat` enum. Those
+            from external plugins may still use a standard format, or may use a string
+            to refer to a custom format.
+        config : SimTypeConfig
+            The simulation configuration. The `SimTypeFormat` type represents a mapping
+            with string keys that will vary based on the type of simulation being run.
+
+        Returns
+        -------
+        Boolean
+            If this plugin expects to be able to convert the simulation result to its
+            desired final format.
+
+        """
+        pass
+
+    @abstractmethod
+    def convert(
+        self, format: ResultFormat | str, result: Any, config: SimTypeConfig
+    ) -> bool:
+        """Convert a simulation result.
+
+        Parameters
+        ----------
+        format : ResultFormat, str
+            The format of the simulation result. Simulation types provided by the main
+            package will use one of the values from the `ResultFormat` enum. Simulation
+            types from external plugins may still use a standard format, or may use a
+            string to refer to a custom format.
+        result
+            The simulation result. Simulation type plugins provided by the main package
+            will use a `zarr.Group` instance. Other plugins may use different structures
+            to hold the result.
+        config : SimTypeConfig
+            The simulation configuration. The `SimTypeFormat` type represents a mapping
+            with string keys that will vary based on the type of simulation being run.
+
+        Returns
+        -------
+        success : Boolean
+            True if the result was successfully converted. The simulator may choose to
+            delete the initial result in this case. False if the conversion failed and
+            the initial result should be retained.
 
         """
         pass

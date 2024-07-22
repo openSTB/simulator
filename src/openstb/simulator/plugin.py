@@ -240,3 +240,10 @@ def travel_time(plugin_spec: PluginSpec) -> abc.TravelTime:
     return cast(
         abc.TravelTime, load_plugin("openstb.simulator.travel_time", plugin_spec)
     )
+
+
+def result_converter(plugin_spec: PluginSpec) -> abc.ResultConverter:
+    return cast(
+        abc.ResultConverter,
+        load_plugin("openstb.simulator.result_converter", plugin_spec),
+    )

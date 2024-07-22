@@ -21,4 +21,6 @@ tests/coverage
 dask-scratch-space/
 
 # Output of example simulation.
+example_sim.mat
+example_sim.npz
 example_sim.zarr/
