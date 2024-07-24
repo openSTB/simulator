@@ -4,7 +4,7 @@
 import numpy as np
 import quaternionic
 
-from openstb.simulator import plugin
+from openstb.simulator.plugin import loader
 from openstb.simulator.sim_type.points import PointSimulator, PointSimulatorConfig
 
 
@@ -33,7 +33,7 @@ config: PointSimulatorConfig = {}
 
 
 # Use a 10m linear trajectory along the x axis at 1.5m/s.
-config["trajectory"] = plugin.trajectory(
+config["trajectory"] = loader.trajectory(
     {
         "name": "linear",
         "parameters": {
@@ -47,7 +47,7 @@ config["trajectory"] = plugin.trajectory(
 # Decide when the sonar will transmit pings. Here, we ping at a constant interval of
 # 0.2s, starting at t=0 (the start of the trajectory) and with no ping closer than 0.5s
 # to the end of the trajectory.
-config["ping_times"] = plugin.ping_times(
+config["ping_times"] = loader.ping_times(
     {
         "name": "constant_interval",
         "parameters": {
@@ -59,7 +59,7 @@ config["ping_times"] = plugin.ping_times(
 )
 
 # The environment is spatially and temporally invariant.
-config["environment"] = plugin.environment(
+config["environment"] = loader.environment(
     {
         "name": "invariant",
         "parameters": {
@@ -76,7 +76,7 @@ config["environment"] = plugin.environment(
 # fraction of incident amplitude that is scattered back to the sonar. The second target
 # is a single point at a given position.
 config["targets"] = [
-    plugin.point_targets(
+    loader.point_targets(
         {
             "name": "random_point_rectangle",
             "parameters": {
@@ -90,7 +90,7 @@ config["targets"] = [
             },
         }
     ),
-    plugin.point_targets(
+    loader.point_targets(
         {
             "name": "single_point",
             "parameters": {
@@ -102,7 +102,7 @@ config["targets"] = [
 ]
 
 # Use the stop-and-hop approximation when calculating the travel time of the pulse.
-config["travel_time"] = plugin.travel_time(
+config["travel_time"] = loader.travel_time(
     {
         "name": "stop_and_hop",
         "parameters": {},
@@ -112,7 +112,7 @@ config["travel_time"] = plugin.travel_time(
 # Apply two scale factors: spherical spreading (1/r scaling to the amplitude on
 # each direction) and acoustic attenuation.
 config["scale_factors"] = [
-    plugin.scale_factor(
+    loader.scale_factor(
         {
             "name": "geometric_spreading",
             "parameters": {
@@ -120,7 +120,7 @@ config["scale_factors"] = [
             },
         }
     ),
-    plugin.scale_factor(
+    loader.scale_factor(
         {
             "name": "anslie_mccolm_attenuation",
             "parameters": {
@@ -131,7 +131,7 @@ config["scale_factors"] = [
 ]
 
 # Define the signal the sonar will transmit. Here a Tukey-windowed LFM upchirp is used.
-config["signal"] = plugin.signal(
+config["signal"] = loader.signal(
     {
         "name": "lfm_chirp",
         "parameters": {
@@ -163,7 +163,7 @@ beampattern = {
 }
 
 # Define the transmitting transducer.
-config["transmitter"] = plugin.transducer(
+config["transmitter"] = loader.transducer(
     {
         "name": "generic",
         "parameters": {
@@ -178,7 +178,7 @@ config["transmitter"] = plugin.transducer(
 beampattern["parameters"]["transmit"] = False
 beampattern["parameters"]["receive"] = True
 config["receivers"] = [
-    plugin.transducer(
+    loader.transducer(
         {
             "name": "generic",
             "parameters": {
@@ -193,7 +193,7 @@ config["receivers"] = [
 
 # Create a cluster on the local machine with 8 workers able to use up to ~40% of the
 # total memory (note that the memory is enforced on a best-effort basis).
-config["cluster"] = plugin.dask_cluster(
+config["cluster"] = loader.dask_cluster(
     {
         "name": "local",
         "parameters": {
@@ -209,7 +209,7 @@ config["cluster"] = plugin.dask_cluster(
 # to write them to a different format. The following converts the result to an
 # uncompressed NumPy .npz file; this can then be loaded with np.load("example_sim.py")
 # which returns a mapping interface.
-config["result_converter"] = plugin.result_converter(
+config["result_converter"] = loader.result_converter(
     {
         "name": "numpy",
         "parameters": {
@@ -223,7 +223,7 @@ config["result_converter"] = plugin.result_converter(
 # `scipy.io.savemat` function provided by SciPy; note that this only supports "5"
 # (MATLAB 5 and up) and "4" as the format arguments, and not the newer HDF-backed
 # formats.
-# config["result_converter"] = plugin.result_converter(
+# config["result_converter"] = loader.result_converter(
 #     {
 #         "name": "matlab",
 #         "parameters": {

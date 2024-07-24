@@ -7,7 +7,7 @@ import quaternionic
 
 from openstb.i18n.support import domain_translator
 from openstb.simulator.abc import ScaleFactor, Transducer
-from openstb.simulator.plugin import PluginSpec, scale_factor
+from openstb.simulator.plugin.loader import PluginSpec, scale_factor
 
 
 _ = domain_translator("openstb.simulator", plural=False)

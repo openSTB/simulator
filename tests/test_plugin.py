@@ -11,7 +11,7 @@ import types
 
 import pytest
 
-from openstb.simulator import plugin
+from openstb.simulator.plugin import loader
 
 
 # To test our plugin support, we don't want to rely on plugins being installed. In
@@ -179,18 +179,18 @@ def test_plugin_registered_empty():
     """plugin.registered_plugins: group with no plugins"""
     # Mostly intended to ensure other tests don't get confused if the user has for some
     # reason installed plugins in this group.
-    registered = plugin.registered_plugins("openstb.simulator.testplugin")
+    registered = loader.registered_plugins("openstb.simulator.testplugin")
     assert len(registered) == 0
 
 
 def test_plugin_registered(test_plugins):
     """plugin.registered_plugins: check basic behaviour"""
-    registered = plugin.registered_plugins("openstb.simulator.testplugin")
+    registered = loader.registered_plugins("openstb.simulator.testplugin")
     assert len(registered) == 3
     for record in registered:
         assert len(record) == 2
 
-    registered = plugin.registered_plugins("openstb.simulator.testplugin", load=True)
+    registered = loader.registered_plugins("openstb.simulator.testplugin", load=True)
     assert len(registered) == 3
     for record in registered:
         assert len(record) == 3
@@ -198,12 +198,12 @@ def test_plugin_registered(test_plugins):
 
 def test_plugin_load_class(test_plugins):
     """plugin.load_plugin_class: check basic behaviour"""
-    cls = plugin.load_plugin_class("openstb.simulator.testplugin", "plugin_a")
+    cls = loader.load_plugin_class("openstb.simulator.testplugin", "plugin_a")
     assert cls.__name__ == "ATestPlugin"
     inst = cls(scale=2, offset=-1)
     assert inst.get_value(3) == 5
 
-    cls = plugin.load_plugin_class(
+    cls = loader.load_plugin_class(
         "openstb.simulator.testplugin",
         "NegatingPlugin:openstb_simtestplugin.installed.plugin_b",
     )
@@ -211,7 +211,7 @@ def test_plugin_load_class(test_plugins):
     inst = cls(scale=2, offset=-1)
     assert inst.get_value(3) == -7
 
-    cls = plugin.load_plugin_class(
+    cls = loader.load_plugin_class(
         "openstb.simulator.testplugin",
         f"DoublePlugin:{test_plugins / 'plugin_double.py'}",
     )
@@ -223,10 +223,10 @@ def test_plugin_load_class(test_plugins):
 def test_plugin_load_class_missing(test_plugins):
     """plugin.load_plugin_class: check with invalid plugin name"""
     with pytest.raises(ValueError, match="no .+testplugin plugin named 'missing'"):
-        plugin.load_plugin_class("openstb.simulator.testplugin", "missing")
+        loader.load_plugin_class("openstb.simulator.testplugin", "missing")
 
     with pytest.raises(ModuleNotFoundError):
-        plugin.load_plugin_class(
+        loader.load_plugin_class(
             "openstb.simulator.testplugin",
             "Missing:openstb_simtestplugin.installed.missing",
         )
@@ -234,7 +234,7 @@ def test_plugin_load_class_missing(test_plugins):
     # If the spec does not refer to an existing file, it is treated as an installed
     # module.
     with pytest.raises(ModuleNotFoundError):
-        plugin.load_plugin_class(
+        loader.load_plugin_class(
             "openstb.simulator.testplugin", f"Missing:{test_plugins / 'missing.py'}"
         )
 
@@ -242,25 +242,25 @@ def test_plugin_load_class_missing(test_plugins):
 def test_plugin_load_class_multi(test_plugins):
     """plugin.load_plugin_class: check with multiple registered plugins of same name"""
     with pytest.raises(ValueError, match="multiple .+testplugin plugins"):
-        plugin.load_plugin_class("openstb.simulator.testplugin", "multi")
+        loader.load_plugin_class("openstb.simulator.testplugin", "multi")
 
 
 def test_plugin_load_class_local_err(test_plugins):
     """plugin.load_plugin_class: local plugins with errors"""
     with pytest.raises(SyntaxError, match="expected ':'"):
-        plugin.load_plugin_class(
+        loader.load_plugin_class(
             "openstb.simulator.testplugin",
             f"TriplePlugin:{test_plugins / 'plugin_triple.py'}",
         )
 
     with pytest.raises(ValueError, match="could not create import spec"):
-        plugin.load_plugin_class(
+        loader.load_plugin_class(
             "openstb.simulator.testplugin",
             f"TriplePlugin:{test_plugins / 'plugin_triple.x'}",
         )
 
     with pytest.raises(AttributeError, match="has no attribute DblPlugin"):
-        plugin.load_plugin_class(
+        loader.load_plugin_class(
             "openstb.simulator.testplugin",
             f"DblPlugin:{test_plugins / 'plugin_double.py'}",
         )
@@ -269,15 +269,15 @@ def test_plugin_load_class_local_err(test_plugins):
 def test_plugin_load_spec(test_plugins):
     """plugin.load_plugin: check with spec dictionary"""
     with pytest.raises(TypeError, match="missing 1 required positional argument"):
-        plugin.load_plugin("openstb.simulator.testplugin", {"name": "plugin_a"})
+        loader.load_plugin("openstb.simulator.testplugin", {"name": "plugin_a"})
 
-    inst = plugin.load_plugin(
+    inst = loader.load_plugin(
         "openstb.simulator.testplugin",
         {"name": "plugin_a", "parameters": {"offset": 2, "scale": 5}},
     )
     assert inst.get_value(5) == 27
 
     # Should pass through an existing plugin instance.
-    cls = plugin.load_plugin_class("openstb.simulator.testplugin", "plugin_a")
+    cls = loader.load_plugin_class("openstb.simulator.testplugin", "plugin_a")
     inst = cls(scale=2, offset=-1)
-    assert plugin.load_plugin("openstb.simulator.testplugin", inst) is inst
+    assert loader.load_plugin("openstb.simulator.testplugin", inst) is inst
