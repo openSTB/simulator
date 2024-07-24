@@ -200,6 +200,13 @@ def point_targets(plugin_spec: PluginSpec) -> abc.PointTargets:
     )
 
 
+def result_converter(plugin_spec: PluginSpec) -> abc.ResultConverter:
+    return cast(
+        abc.ResultConverter,
+        load_plugin("openstb.simulator.result_converter", plugin_spec),
+    )
+
+
 def scale_factor(plugin_spec: PluginSpec) -> abc.ScaleFactor:
     return cast(
         abc.ScaleFactor, load_plugin("openstb.simulator.scale_factor", plugin_spec)
@@ -245,11 +252,4 @@ def transducer(plugin_spec: PluginSpec) -> abc.Transducer:
 def travel_time(plugin_spec: PluginSpec) -> abc.TravelTime:
     return cast(
         abc.TravelTime, load_plugin("openstb.simulator.travel_time", plugin_spec)
-    )
-
-
-def result_converter(plugin_spec: PluginSpec) -> abc.ResultConverter:
-    return cast(
-        abc.ResultConverter,
-        load_plugin("openstb.simulator.result_converter", plugin_spec),
     )

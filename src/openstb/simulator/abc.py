@@ -320,7 +320,7 @@ class Trajectory(Plugin):
     @property
     @abstractmethod
     def length(self) -> float:
-        """The length of the trajectory in seconds."""
+        """The length of the trajectory in metres."""
         pass
 
     @property
