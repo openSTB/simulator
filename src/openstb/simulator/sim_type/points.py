@@ -195,7 +195,7 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
             )
             common = client.scatter(
                 _ChunkCommon(
-                    f=f,
+                    f=f + self.baseband_frequency,
                     S=S,
                     travel_time=config["travel_time"],
                     trajectory=config["trajectory"],
@@ -256,10 +256,14 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
                                 new_futures.append(client.submit(np.sum, tmp, axis=0))
                             del tmp
                         chunk_futures = new_futures
+                        del new_futures
 
                     # The final sum is the only future left. Take the inverse FFT.
-                    ping_result = client.submit(np.fft.ifft, chunk_futures[0])
-                    del chunk_futures, new_futures
+                    ping_result = client.submit(
+                        np.fft.ifft,
+                        client.submit(np.fft.ifftshift, chunk_futures[0]),
+                    )
+                    del chunk_futures
 
                     # Wait until the result is available and store.
                     distributed.wait(ping_result)
