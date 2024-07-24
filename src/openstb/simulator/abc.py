@@ -640,3 +640,55 @@ class ResultConverter(Plugin):
 
         """
         pass
+
+
+class Transducer(Plugin):
+    """A single transducer within the sonar system."""
+
+    @property
+    @abstractmethod
+    def position(self) -> np.ndarray:
+        """The position of the transducer in the vehicle coordinate system.
+
+        The origin of the vehicle coordinate system is the point at which the trajectory
+        is recorded. The x axis points forward, the y axis to starboard and the z axis
+        down.
+
+        Returns
+        -------
+        numpy.ndarray
+            A 3-element vector containing the position.
+
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def orientation(self) -> quaternionic.QArray:
+        """The orientation of the transducer in the vehicle coordinate system.
+
+        The origin of the vehicle coordinate system is the point at which the trajectory
+        is recorded. The x axis points forward, the y axis to starboard and the z axis
+        down.
+
+        An unrotated transducer has a normal parallel to the x axis. Rotating with this
+        quaternion gives the orientation of the transducer.
+
+        Returns
+        -------
+        quaternionic.array
+            A single quaternion giving the orientation.
+
+        """
+        pass
+
+    @property
+    def scale_factors(self) -> list[ScaleFactor]:
+        """Multiplicative scale factors associated with the transducer.
+
+        Returns
+        -------
+        list of ScaleFactor instances
+
+        """
+        return []

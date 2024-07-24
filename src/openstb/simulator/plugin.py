@@ -236,6 +236,12 @@ def trajectory(plugin_spec: PluginSpec) -> abc.Trajectory:
     )
 
 
+def transducer(plugin_spec: PluginSpec) -> abc.Transducer:
+    return cast(
+        abc.Transducer, load_plugin("openstb.simulator.transducer", plugin_spec)
+    )
+
+
 def travel_time(plugin_spec: PluginSpec) -> abc.TravelTime:
     return cast(
         abc.TravelTime, load_plugin("openstb.simulator.travel_time", plugin_spec)

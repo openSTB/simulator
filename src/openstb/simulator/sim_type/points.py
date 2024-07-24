@@ -2,14 +2,13 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
 from dataclasses import dataclass
+from itertools import chain
 import os
 from pathlib import Path
 from typing import NotRequired, TypedDict
 
 import distributed
 import numpy as np
-from numpy.typing import ArrayLike
-import quaternionic
 import zarr
 
 from openstb.i18n.support import domain_translator
@@ -28,16 +27,14 @@ class PointSimulatorConfig(TypedDict):
     #: Plugin which will calculate ping start times.
     ping_times: abc.PingTimes
 
-    #: Orientation of the receivers relative to the system. Must be an Nr x 4 array
-    #: where Nr is the number of receivers.
-    receiver_orientation: ArrayLike | quaternionic.QArray | list[quaternionic.QArray]
-
-    #: Position of each receiver in the vehicle coordinate system. Must be an Nr x 3
-    #: array where Nr is the number of receivers.
-    receiver_position: ArrayLike
+    #: Transducer used for transmitting the signal.
+    transmitter: abc.Transducer
 
     #: Plugin representing the transmitted signal.
     signal: abc.Signal
+
+    #: Transducers for which the received signal should be simulated.
+    receivers: list[abc.Transducer]
 
     #: A list of plugins giving the point targets to simulate.
     targets: list[abc.PointTargets]
@@ -47,14 +44,6 @@ class PointSimulatorConfig(TypedDict):
 
     #: Details about the environment the system is operating in.
     environment: abc.Environment
-
-    #: Orientation of the transmitter relative to the system. Must be an array of shape
-    #: (4,) i.e., only a single transmitter.
-    transmitter_orientation: ArrayLike | quaternionic.QArray
-
-    #: Position of the transmitter in the vehicle coordinate system. Must be an array of
-    #: shape (3,) i.e., only a single transmitter.
-    transmitter_position: ArrayLike
 
     #: Plugin which will calculate the travel times to and from each target.
     travel_time: abc.TravelTime
@@ -85,6 +74,7 @@ def _pointsim_chunk(
     ping_time: float,
     rx_position: np.ndarray,
     rx_ori: np.ndarray,
+    rx_scale_factors: list[abc.ScaleFactor],
 ):
     tt_result = common.travel_time.calculate(
         common.trajectory,
@@ -101,7 +91,7 @@ def _pointsim_chunk(
         -2j * np.pi * common.f[:, np.newaxis] * tt_result.travel_time[:, np.newaxis, :]
     )
     Schunk *= targets[:, 3]
-    for scale_factor in common.scale_factors:
+    for scale_factor in chain(common.scale_factors, rx_scale_factors):
         Schunk *= scale_factor.calculate(
             ping_time,
             common.f,
@@ -143,24 +133,8 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
             self.fill_value = fill_value
 
     def run(self, config: PointSimulatorConfig):
-        # Check the shapes of the transmitter and receiver info.
-        tx_position = np.array(config["transmitter_position"], dtype=float)
-        if tx_position.shape != (3,):
-            raise ValueError(_("invalid shape for transmitter position array"))
-
-        rx_position = np.array(config["receiver_position"])
-        if rx_position.ndim != 2 or rx_position.shape[-1] != 3:
-            raise ValueError(_("invalid shape for receiver position array"))
-        Nr = rx_position.shape[0]
-
-        # And their orientations.
-        tx_ori = np.array(config["transmitter_orientation"])
-        if tx_ori.shape != (4,):
-            raise ValueError(_("invalid shape for transmitter orientation array"))
-
-        rx_ori = np.array(config["receiver_orientation"])
-        if rx_ori.shape != (Nr, 4):
-            raise ValueError(_("invalid shape for receiver orientation array"))
+        # Determine the number of receivers being simulated.
+        Nr = len(config["receivers"])
 
         # Calculate the ping start times.
         ping_start = config["ping_times"].calculate(config["trajectory"])
@@ -216,16 +190,19 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
             chunks = client.scatter(chunks, broadcast=False)
 
             # Collate and send common details to all workers.
+            scale_factors = (
+                config["transmitter"].scale_factors + config["scale_factors"]
+            )
             common = client.scatter(
                 _ChunkCommon(
                     f=f,
                     S=S,
                     travel_time=config["travel_time"],
                     trajectory=config["trajectory"],
-                    tx_position=tx_position,
-                    tx_ori=tx_ori,
+                    tx_position=config["transmitter"].position,
+                    tx_ori=config["transmitter"].orientation.ndarray,
                     environment=config["environment"],
-                    scale_factors=config["scale_factors"],
+                    scale_factors=scale_factors,
                     signal_frequency_bounds=signal_frequency_bounds,
                 ),
                 broadcast=True,
@@ -258,8 +235,9 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
                             common,
                             targets=chunk,
                             ping_time=ping_start[p],
-                            rx_position=rx_position[r],
-                            rx_ori=rx_ori[r],
+                            rx_position=config["receivers"][r].position,
+                            rx_ori=config["receivers"][r].orientation.ndarray,
+                            rx_scale_factors=config["receivers"][r].scale_factors,
                         )
                         for chunk in chunks
                     ]

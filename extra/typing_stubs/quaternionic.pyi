@@ -26,6 +26,7 @@ class QArray:
     scalar: np.ndarray
     vector: np.ndarray
     mag2: np.ndarray
+    shape: tuple[int]
 
 class _qarray_stub:
     def __call__(self, x: ArrayLike | QArray) -> QArray: ...

@@ -74,6 +74,9 @@ tukey = "openstb.simulator.system.signal_windows:TukeyWindow"
 [project.entry-points."openstb.simulator.trajectory"]
 linear = "openstb.simulator.system.trajectory:Linear"
 
+[project.entry-points."openstb.simulator.transducer"]
+generic = "openstb.simulator.transducer:GenericTransducer"
+
 [project.entry-points."openstb.simulator.travel_time"]
 stop_and_hop = "openstb.simulator.travel_time:StopAndHop"
 

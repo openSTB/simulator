@@ -95,7 +95,7 @@ config["targets"] = [
             "name": "single_point",
             "parameters": {
                 "position": (5, 40, 10),
-                "reflectivity": 1,
+                "reflectivity": 10,
             },
         }
     ),
@@ -109,9 +109,8 @@ config["travel_time"] = plugin.travel_time(
     }
 )
 
-# Apply a set of scale factors: spherical spreading (1/r scaling to the amplitude on
-# each direction), acoustic attenuation and the far-field beampattern of the
-# transducers.
+# Apply two scale factors: spherical spreading (1/r scaling to the amplitude on
+# each direction) and acoustic attenuation.
 config["scale_factors"] = [
     plugin.scale_factor(
         {
@@ -125,18 +124,6 @@ config["scale_factors"] = [
         {
             "name": "anslie_mccolm_attenuation",
             "parameters": {
-                "frequency": "centre",
-            },
-        }
-    ),
-    plugin.scale_factor(
-        {
-            "name": "rectangular_beampattern",
-            "parameters": {
-                "width": 0.015,
-                "height": 0.03,
-                "transmit": True,
-                "receive": True,
                 "frequency": "centre",
             },
         }
@@ -161,26 +148,47 @@ config["signal"] = plugin.signal(
     }
 )
 
-# Set the position and orientation of the transmitter.
-config["transmitter_position"] = np.array([0, 1.2, 0.3])
-config["transmitter_orientation"] = q_transducer
+# Define a common far-field beampattern for the transducers. Note that this is just a
+# scale factor attached to the transducers; we could add this to the list of scale
+# factors above and not pass it to the transducers to achieve the same result.
+beampattern = {
+    "name": "rectangular_beampattern",
+    "parameters": {
+        "width": 0.015,
+        "height": 0.03,
+        "transmit": True,
+        "receive": False,
+        "frequency": "centre",
+    },
+}
 
-# And then the position and orientation of each element in the receiver array.
-config["receiver_position"] = np.array(
-    [
-        [-0.1, 1.2, 0],
-        [-0.05, 1.2, 0],
-        [0.0, 1.2, 0],
-        [0.05, 1.2, 0],
-        [0.1, 1.2, 0],
-    ]
+# Define the transmitting transducer.
+config["transmitter"] = plugin.transducer(
+    {
+        "name": "generic",
+        "parameters": {
+            "position": [0, 1.2, 0.3],
+            "orientation": q_transducer,
+            "beampattern": beampattern,
+        },
+    }
 )
-config["receiver_orientation"] = [
-    q_transducer,
-    q_transducer,
-    q_transducer,
-    q_transducer,
-    q_transducer,
+
+# And then the list of receiving transducers.
+beampattern["parameters"]["transmit"] = False
+beampattern["parameters"]["receive"] = True
+config["receivers"] = [
+    plugin.transducer(
+        {
+            "name": "generic",
+            "parameters": {
+                "position": [x, 1.2, 0],
+                "orientation": q_transducer,
+                "beampattern": beampattern,
+            },
+        }
+    )
+    for x in [-0.1, -0.05, 0, 0.05, 0.1]
 ]
 
 # Create a cluster on the local machine with 8 workers able to use up to ~40% of the
