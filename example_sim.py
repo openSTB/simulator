@@ -131,7 +131,7 @@ config["scale_factors"] = [
 ]
 
 # Define the signal the sonar will transmit. Here a Tukey-windowed LFM upchirp is used.
-config["signal"] = loader.signal(
+signal = loader.signal(
     {
         "name": "lfm_chirp",
         "parameters": {
@@ -163,7 +163,7 @@ beampattern = {
 }
 
 # Define the transmitting transducer.
-config["transmitter"] = loader.transducer(
+transmitter = loader.transducer(
     {
         "name": "generic",
         "parameters": {
@@ -177,7 +177,7 @@ config["transmitter"] = loader.transducer(
 # And then the list of receiving transducers.
 beampattern["parameters"]["transmit"] = False
 beampattern["parameters"]["receive"] = True
-config["receivers"] = [
+receivers = [
     loader.transducer(
         {
             "name": "generic",
@@ -190,6 +190,20 @@ config["receivers"] = [
     )
     for x in [-0.1, -0.05, 0, 0.05, 0.1]
 ]
+
+# Combine all this into a System plugin. They could also be placed directly in the
+# configuration under the transmitter, receivers and signal keys.
+config["system"] = loader.system(
+    {
+        "name": "generic",
+        "parameters": {
+            "transmitter": transmitter,
+            "receivers": receivers,
+            "signal": signal,
+        },
+    }
+)
+
 
 # Create a cluster on the local machine with 8 workers able to use up to ~40% of the
 # total memory (note that the memory is enforced on a best-effort basis).

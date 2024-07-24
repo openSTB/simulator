@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from itertools import chain
 import os
 from pathlib import Path
-from typing import NotRequired, TypedDict
+from typing import Any, MutableMapping, NotRequired, TypedDict, cast
 
 import distributed
 import numpy as np
@@ -13,6 +13,7 @@ import zarr
 
 from openstb.i18n.support import domain_translator
 from openstb.simulator import abc
+from openstb.simulator.plugin.util import flatten_system
 
 
 _ = domain_translator("openstb.simulator", plural=False)
@@ -26,6 +27,9 @@ class PointSimulatorConfig(TypedDict):
 
     #: Plugin which will calculate ping start times.
     ping_times: abc.PingTimes
+
+    #: System information.
+    system: abc.System
 
     #: Transducer used for transmitting the signal.
     transmitter: abc.Transducer
@@ -133,6 +137,8 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
             self.fill_value = fill_value
 
     def run(self, config: PointSimulatorConfig):
+        flatten_system(cast(MutableMapping[str, Any], config))
+
         # Determine the number of receivers being simulated.
         Nr = len(config["receivers"])
 

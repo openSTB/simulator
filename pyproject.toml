@@ -71,6 +71,9 @@ hann = "openstb.simulator.system.signal_windows:HannWindow"
 nuttall = "openstb.simulator.system.signal_windows:NuttallWindow"
 tukey = "openstb.simulator.system.signal_windows:TukeyWindow"
 
+[project.entry-points."openstb.simulator.system"]
+generic = "openstb.simulator.system:GenericSystem"
+
 [project.entry-points."openstb.simulator.trajectory"]
 linear = "openstb.simulator.system.trajectory:Linear"
 

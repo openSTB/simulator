@@ -237,6 +237,10 @@ def signal_window(plugin_spec: PluginSpec) -> abc.SignalWindow:
     )
 
 
+def system(plugin_spec: PluginSpec) -> abc.System:
+    return cast(abc.System, load_plugin("openstb.simulator.system", plugin_spec))
+
+
 def trajectory(plugin_spec: PluginSpec) -> abc.Trajectory:
     return cast(
         abc.Trajectory, load_plugin("openstb.simulator.trajectory", plugin_spec)
