@@ -9,7 +9,7 @@ import numpy as np
 import scipy.io
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator.abc import ResultConverter, ResultFormat, SimTypeConfig
+from openstb.simulator.abc import ResultConverter, ResultFormat, SimulationConfig
 
 
 _ = domain_translator("openstb.simulator", plural=False)
@@ -60,10 +60,12 @@ class MATLABConverter(ResultConverter):
                 )
             )
 
-    def can_handle(self, format: ResultFormat | str, config: SimTypeConfig):
+    def can_handle(self, format: ResultFormat | str, config: SimulationConfig):
         return format == ResultFormat.ZARR_BASEBAND_PRESSURE
 
-    def convert(self, format: ResultFormat | str, result: Any, config: SimTypeConfig):
+    def convert(
+        self, format: ResultFormat | str, result: Any, config: SimulationConfig
+    ):
         if format != ResultFormat.ZARR_BASEBAND_PRESSURE:
             return False
 
@@ -121,10 +123,12 @@ class NumpyConverter(ResultConverter):
                 )
             )
 
-    def can_handle(self, format: ResultFormat | str, config: SimTypeConfig):
+    def can_handle(self, format: ResultFormat | str, config: SimulationConfig):
         return format == ResultFormat.ZARR_BASEBAND_PRESSURE
 
-    def convert(self, format: ResultFormat | str, result: Any, config: SimTypeConfig):
+    def convert(
+        self, format: ResultFormat | str, result: Any, config: SimulationConfig
+    ):
         if format != ResultFormat.ZARR_BASEBAND_PRESSURE:
             return False
 

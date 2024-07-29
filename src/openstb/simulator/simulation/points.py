@@ -19,7 +19,7 @@ from openstb.simulator.plugin.util import flatten_system
 _ = domain_translator("openstb.simulator", plural=False)
 
 
-class PointSimulatorConfig(TypedDict):
+class PointSimulationConfig(TypedDict):
     """Specification for the PointSimulator configuration dictionary."""
 
     # Dask cluster to run the simulation on.
@@ -107,7 +107,7 @@ def _pointsim_chunk(
     return Schunk.sum(axis=-1).squeeze()
 
 
-class PointSimulator(abc.SimType[PointSimulatorConfig]):
+class PointSimulation(abc.Simulation[PointSimulationConfig]):
     def __init__(
         self,
         output_filename: os.PathLike[str] | str,
@@ -136,7 +136,7 @@ class PointSimulator(abc.SimType[PointSimulatorConfig]):
         else:
             self.fill_value = fill_value
 
-    def run(self, config: PointSimulatorConfig):
+    def run(self, config: PointSimulationConfig):
         flatten_system(cast(MutableMapping[str, Any], config))
 
         # Determine the number of receivers being simulated.

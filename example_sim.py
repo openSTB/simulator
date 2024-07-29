@@ -5,7 +5,7 @@ import numpy as np
 import quaternionic
 
 from openstb.simulator.plugin import loader
-from openstb.simulator.sim_type.points import PointSimulator, PointSimulatorConfig
+from openstb.simulator.simulation.points import PointSimulation, PointSimulationConfig
 
 
 # Set the desired orientation of the transducers. Without rotation, the normal of the
@@ -19,7 +19,7 @@ q_tilt = quaternionic.array.from_rotation_vector([np.radians(15), 0, 0])
 q_transducer = q_tilt * q_yaw
 
 # Begin our configuration dictionary.
-config: PointSimulatorConfig = {}
+config: PointSimulationConfig = {}
 
 # Each plugin is defined through a plugin specification dictionary. This takes the name
 # the plugin is registered under (see pyproject.toml for a list of the included plugins)
@@ -256,7 +256,7 @@ config["result_converter"] = loader.result_converter(
 # output name in the simulation definition if you want to re-run the simulation. We
 # manually specify how many targets to include in each chunk of work, and the details
 # about the system sampling. The output will be in the complex baseband.
-sim = PointSimulator(
+sim = PointSimulation(
     "example_sim.zarr",
     targets_per_chunk=1000,
     sample_rate=30e3,

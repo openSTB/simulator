@@ -38,14 +38,14 @@ class Plugin(ABC):
 #: require a different configuration structure. Here we simply say it will be a mapping
 #: from string keys to any type of object, and allow the plugins to define a more
 #: specific type.
-SimTypeConfig = TypeVar("SimTypeConfig", bound=Mapping[str, Any])
+SimulationConfig = TypeVar("SimulationConfig", bound=Mapping[str, Any])
 
 
-class SimType(Plugin, Generic[SimTypeConfig]):
+class Simulation(Plugin, Generic[SimulationConfig]):
     """A type of simulation."""
 
     @abstractmethod
-    def run(self, config: SimTypeConfig):
+    def run(self, config: SimulationConfig):
         """Run the simulation.
 
         Parameters
@@ -587,7 +587,7 @@ class ResultConverter(Plugin):
     """Convert a simulator result from its internal format to a desired format."""
 
     @abstractmethod
-    def can_handle(self, format: ResultFormat | str, config: SimTypeConfig) -> bool:
+    def can_handle(self, format: ResultFormat | str, config: SimulationConfig) -> bool:
         """Check if this plugin will be able to convert a simulation result.
 
         Parameters
@@ -597,9 +597,10 @@ class ResultConverter(Plugin):
             main package will use one of the values from the `ResultFormat` enum. Those
             from external plugins may still use a standard format, or may use a string
             to refer to a custom format.
-        config : SimTypeConfig
-            The simulation configuration. The `SimTypeFormat` type represents a mapping
-            with string keys that will vary based on the type of simulation being run.
+        config : SimulationConfig
+            The simulation configuration. The `SimulationConfigt` type represents a
+            mapping with string keys that will vary based on the type of simulation
+            being run.
 
         Returns
         -------
@@ -612,7 +613,7 @@ class ResultConverter(Plugin):
 
     @abstractmethod
     def convert(
-        self, format: ResultFormat | str, result: Any, config: SimTypeConfig
+        self, format: ResultFormat | str, result: Any, config: SimulationConfig
     ) -> bool:
         """Convert a simulation result.
 
@@ -627,9 +628,10 @@ class ResultConverter(Plugin):
             The simulation result. Simulation type plugins provided by the main package
             will use a `zarr.Group` instance. Other plugins may use different structures
             to hold the result.
-        config : SimTypeConfig
-            The simulation configuration. The `SimTypeFormat` type represents a mapping
-            with string keys that will vary based on the type of simulation being run.
+        config : SimulationConfig
+            The simulation configuration. The `SimulationConfig` type represents a
+            mapping with string keys that will vary based on the type of simulation
+            being run.
 
         Returns
         -------
