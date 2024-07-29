@@ -78,7 +78,7 @@ generic = "openstb.simulator.system:GenericSystem"
 linear = "openstb.simulator.system.trajectory:Linear"
 
 [project.entry-points."openstb.simulator.transducer"]
-generic = "openstb.simulator.transducer:GenericTransducer"
+generic = "openstb.simulator.system.transducer:GenericTransducer"
 
 [project.entry-points."openstb.simulator.travel_time"]
 stop_and_hop = "openstb.simulator.travel_time:StopAndHop"
