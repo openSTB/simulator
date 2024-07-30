@@ -231,6 +231,7 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
             storage["ping_start_time"][:] = ping_start
             storage.attrs.baseband_frequency = self.baseband_frequency
             storage.attrs.fill_value = self.fill_value
+            storage.attrs.sample_rate = self.sample_rate
 
             for p in range(Np):
                 for r in range(Nr):
