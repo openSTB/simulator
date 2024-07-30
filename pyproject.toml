@@ -140,10 +140,15 @@ exclude_lines = [
 # Configuration of linting tools.
 #
 
+[tool.black]
+extend-exclude = "tests/test_plugin_modules/local/plugin_triple.py"
 
 [tool.flake8]
 # You need to have the flake8-pyproject plugin installed as flake8 does not
 # natively support pyproject.toml yet.
+extend-exclude = [
+  "tests/test_plugin_modules/local/plugin_triple.py",
+]
 max-line-length = 88
 ignore = ["E203", "E704", "W503"]
 per-file-ignores = [
@@ -151,6 +156,9 @@ per-file-ignores = [
 ]
 
 [tool.isort]
+extend_skip = [
+  "tests/test_plugin_modules/local/plugin_triple.py",
+]
 profile = "black"
 src_paths = ["src"]
 lines_after_imports = 2
