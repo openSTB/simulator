@@ -4,7 +4,7 @@
 import numpy as np
 from numpy.typing import ArrayLike
 
-from openstb.simulator.abc import Environment
+from openstb.simulator.plugin.abc import Environment
 
 
 class InvariantEnvironment(Environment):

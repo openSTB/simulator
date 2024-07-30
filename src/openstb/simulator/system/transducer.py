@@ -6,7 +6,7 @@ from numpy.typing import ArrayLike
 import quaternionic
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator.abc import ScaleFactor, Transducer
+from openstb.simulator.plugin.abc import ScaleFactor, Transducer
 from openstb.simulator.plugin.loader import PluginSpec, scale_factor
 
 

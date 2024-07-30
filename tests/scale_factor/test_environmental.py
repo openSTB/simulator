@@ -5,8 +5,8 @@ import numpy as np
 import pytest
 import quaternionic
 
-from openstb.simulator.abc import TravelTimeResult
 from openstb.simulator.environment import InvariantEnvironment
+from openstb.simulator.plugin.abc import TravelTimeResult
 from openstb.simulator.scale_factor import environmental
 
 

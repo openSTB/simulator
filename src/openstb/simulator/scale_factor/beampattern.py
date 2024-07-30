@@ -4,7 +4,7 @@
 import numpy as np
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator.abc import Environment, ScaleFactor, TravelTimeResult
+from openstb.simulator.plugin.abc import Environment, ScaleFactor, TravelTimeResult
 from openstb.simulator.util import rotate_elementwise
 
 

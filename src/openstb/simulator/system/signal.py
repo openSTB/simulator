@@ -4,7 +4,7 @@
 import numpy as np
 from numpy.typing import ArrayLike
 
-from openstb.simulator import abc
+from openstb.simulator.plugin import abc
 from openstb.simulator.plugin.loader import PluginSpec, signal_window
 
 

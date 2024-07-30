@@ -12,7 +12,7 @@ import numpy as np
 import zarr
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator import abc
+from openstb.simulator.plugin import abc
 from openstb.simulator.plugin.util import flatten_system
 
 

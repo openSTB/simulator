@@ -15,7 +15,7 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator.abc import SignalWindow
+from openstb.simulator.plugin.abc import SignalWindow
 
 
 _ = domain_translator("openstb.simulator", plural=False)

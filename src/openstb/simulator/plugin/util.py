@@ -5,7 +5,7 @@ from collections.abc import MutableMapping
 from typing import Any
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator import abc
+from openstb.simulator.plugin import abc
 
 
 _ = domain_translator("openstb.simulator")

@@ -7,7 +7,12 @@ import numpy as np
 from numpy.typing import ArrayLike
 import quaternionic
 
-from openstb.simulator.abc import Environment, Trajectory, TravelTime, TravelTimeResult
+from openstb.simulator.plugin.abc import (
+    Environment,
+    Trajectory,
+    TravelTime,
+    TravelTimeResult,
+)
 
 
 class StopAndHop(TravelTime):
