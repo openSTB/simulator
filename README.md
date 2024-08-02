@@ -46,7 +46,14 @@ Running the simulator
 
 At this stage, the simulator can only be used as a library; in the future, a simple CLI
 is planned to run the simulator from a configuration file. See the `example_sim.py`
-script for a simple example simulation. The output of the simulator is stored in a
-[zarr](https://zarr.readthedocs.io/) file. We intend to have a plugin type to convert
-the results into any desired file format in the future. See the `example_sim_plot.py`
-script for examples of how to load and plot the simulation results.
+script for a simple example simulation. You can run this directly as `python
+example_sim.py` to perform the simulation with a local cluster of 8 processes, or use
+the `example_sim_mpi.sh` to execute it within an MPI environment. While the simulation
+is running, a Dask diagnostic dashboard showing how the cluster is being utilised will
+be available at http://127.0.0.1:8787/.
+
+The initial output of the simulation is stored in a [zarr](https://zarr.readthedocs.io/)
+file. The example simulation configures a result converter plugin to convert this to a
+NumPy file at `example_sim.npz`. It also includes a commented-out configuration to
+convert the output to a MATLAB file if you prefer. See the `example_sim_plot.py` script
+for examples of how to load and plot the NumPy-formatted simulation results.
