@@ -65,20 +65,23 @@ class DaskCluster(Plugin):
     computing environment, whether that is a collection of processes on the local
     computer or within a high performance computing (HPC) system.
 
-    Note that this base class implements a context manager which calls `initialise` on
-    entry (returning the Client to use) and `terminate` on exit. This should be
-    acceptable for most plugins, but can be overridden if needed.
-
     """
 
     @abstractmethod
-    def initialise(self) -> dask.distributed.Client:
+    def initialise(self):
         """Initialise the cluster for use.
 
-        Returns
-        -------
-        client : dask.distributed.Client
-            The client interface used to submit tasks to the cluster.
+        This must be able to be called multiple times without problems.
+
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def client(self) -> dask.distributed.Client:
+        """Get a Client to use the cluster with.
+
+        This should raise an exception if the cluster has not been initialised.
 
         """
         pass
@@ -86,33 +89,17 @@ class DaskCluster(Plugin):
     def terminate(self):
         """Terminate use of the cluster.
 
+        This must be able to be called on an uninitialised cluster or a
+        previously-terminated cluster.
+
         The default implementation does nothing. Plugins should implement this function
-        if needed to cleanly stop the cluster.
+        if needed to cleanly stop the cluster. Note that there is no guarantee that this
+        function will be called; if a clean-up step is required, the plugin should
+        implement `__del__` or use something like `weakref.finalize` to ensure this is
+        run before the instance is garbage collected.
 
         """
         pass
-
-    def __enter__(self) -> dask.distributed.Client:
-        return self.initialise()
-
-    @overload
-    def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None: ...
-
-    @overload
-    def __exit__(
-        self,
-        exc_type: type[BaseException],
-        exc_val: BaseException,
-        exc_tb: TracebackType,
-    ) -> None: ...
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        self.terminate()
 
 
 class Environment(Plugin):

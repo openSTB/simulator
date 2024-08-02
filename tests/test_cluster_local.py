@@ -18,7 +18,8 @@ def test_cluster_local():
     """cluster: basic DaskLocalCluster operation"""
     c = cluster.DaskLocalCluster(workers=2, total_memory=0.01, dashboard_address=None)
 
-    client = c.initialise()
+    c.initialise()
+    client = c.client
     assert client.status == "running"
 
     def workerfunc(num):
@@ -26,7 +27,7 @@ def test_cluster_local():
 
         return num, get_worker().id
 
-    futures = client.map(workerfunc, [0, 1, 2, 3, 4, 5])
+    futures = c.client.map(workerfunc, [0, 1, 2, 3, 4, 5])
     wait(futures)
     results = [future.result() for future in futures]
     c.terminate()
@@ -35,6 +36,9 @@ def test_cluster_local():
     assert {r[0] for r in results} == {0, 1, 2, 3, 4, 5}
     assert len({r[1] for r in results}) == 2
 
+    # Terminating twice should cause no issues.
+    c.terminate()
+
 
 @pytest.mark.cluster
 def test_cluster_local_dashboard(caplog):
@@ -42,33 +46,40 @@ def test_cluster_local_dashboard(caplog):
     caplog.set_level(logging.INFO)
 
     # ":0" -> use a random available port.
-    with cluster.DaskLocalCluster(workers=2, total_memory=0.01, dashboard_address=":0"):
-        # Look through the logs to find the reported address.
-        d_addr = None
-        d_port = None
-        d_page = None
-        for record in caplog.records:
-            if record.name != "distributed.scheduler":
-                continue
-            if "dashboard at:" in record.message:
-                _, _, url = record.message.partition("//")
-                d_addr, _, port_page = url.partition(":")
-                port, _, d_page = port_page.partition("/")
-                d_port = int(port)
-                break
+    c = cluster.DaskLocalCluster(workers=2, total_memory=0.01, dashboard_address=":0")
+    c.initialise()
 
-        assert d_addr is not None, "dashboard address not reported"
-        assert d_port is not None, "dashboard port not reported"
-        assert d_page is not None, "dashboard page not reported"
+    # Make sure initialising twice does not error.
+    c.initialise()
 
-        # Attempt to access the status page.
-        sock = socket.socket()
-        sock.settimeout(1.0)
-        sock.connect((d_addr, d_port))
-        sock.send(f"GET /{d_page} HTTP/1.1\n\n".encode("ascii"))
-        response = sock.recv(15)
-        sock.close()
-        assert response == b"HTTP/1.1 200 OK", "could not access dashboard"
+    # Look through the logs to find the reported address.
+    d_addr = None
+    d_port = None
+    d_page = None
+    for record in caplog.records:
+        if record.name != "distributed.scheduler":
+            continue
+        if "dashboard at:" in record.message:
+            _, _, url = record.message.partition("//")
+            d_addr, _, port_page = url.partition(":")
+            port, _, d_page = port_page.partition("/")
+            d_port = int(port)
+            break
+
+    assert d_addr is not None, "dashboard address not reported"
+    assert d_port is not None, "dashboard port not reported"
+    assert d_page is not None, "dashboard page not reported"
+
+    # Attempt to access the status page.
+    sock = socket.socket()
+    sock.settimeout(1.0)
+    sock.connect((d_addr, d_port))
+    sock.send(f"GET /{d_page} HTTP/1.1\n\n".encode("ascii"))
+    response = sock.recv(15)
+    sock.close()
+    assert response == b"HTTP/1.1 200 OK", "could not access dashboard"
+
+    c.terminate()
 
 
 def test_cluster_local_workers():
@@ -115,3 +126,7 @@ def test_cluster_local_error():
 
     with pytest.raises(ValueError, match="only one of worker_memory and total_memory"):
         cluster.DaskLocalCluster(workers=2, worker_memory=0.1, total_memory=0.2)
+
+    c = cluster.DaskLocalCluster(workers=2, total_memory=0.1)
+    with pytest.raises(RuntimeError, match="must initialise.+before"):
+        c.client

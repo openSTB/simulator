@@ -57,15 +57,13 @@ class DaskLocalCluster(DaskCluster):
         else:
             self.workers = workers
 
-        if worker_memory is None and total_memory is None:
-            raise ValueError(_("worker_memory or total_memory must be given"))
+        # The distributed LocalCluster takes memory per worker as an integer number of
+        # bytes. Convert our inputs.
         if worker_memory is not None and total_memory is not None:
             raise ValueError(
                 _("only one of worker_memory and total_memory can be given")
             )
-
-        # The distributed LocalCluster takes memory per worker.
-        if worker_memory is not None:
+        elif worker_memory is not None:
             if isinstance(worker_memory, float):
                 worker_memory = int(np.fix(worker_memory * MEMORY_LIMIT))
             self.memory = worker_memory
@@ -73,11 +71,19 @@ class DaskLocalCluster(DaskCluster):
             if isinstance(total_memory, float):
                 total_memory = int(np.fix(total_memory * MEMORY_LIMIT))
             self.memory = total_memory // self.workers
+        else:
+            raise ValueError(_("worker_memory or total_memory must be given"))
 
         self.security = security
         self.dashboard_address = dashboard_address
 
-    def initialise(self) -> distributed.Client:
+        self._cluster: distributed.LocalCluster | None = None
+        self._client: distributed.Client | None = None
+
+    def initialise(self):
+        if self._cluster is not None:
+            return
+
         self._cluster = distributed.LocalCluster(
             n_workers=self.workers,
             processes=True,
@@ -86,14 +92,23 @@ class DaskLocalCluster(DaskCluster):
             dashboard_address=self.dashboard_address,
             security=self.security,
         )
-        self._client = self._cluster.get_client()
+
+    @property
+    def client(self) -> distributed.Client:
+        if self._cluster is None:
+            raise RuntimeError(_("must initialise the cluster before getting a client"))
+
+        if self._client is None:
+            self._client = self._cluster.get_client()
         return self._client
 
     def terminate(self):
-        self._client.shutdown()
-        self._client = None
-        self._cluster.close()
-        self._cluster = None
+        if self._client is not None:
+            self._client.shutdown()
+            self._client = None
+        if self._cluster is not None:
+            self._cluster.close()
+            self._cluster = None
 
 
 class DaskMPICluster(DaskCluster):
@@ -132,8 +147,13 @@ class DaskMPICluster(DaskCluster):
 
         self.interface = interface
         self.dashboard_address = dashboard_address
+        self._initialised = False
+        self._client: distributed.Client | None = None
 
-    def initialise(self) -> distributed.Client:
+    def initialise(self):
+        if self._initialised:
+            return
+
         import dask_mpi
 
         dask_mpi.initialize(
@@ -142,4 +162,12 @@ class DaskMPICluster(DaskCluster):
             dashboard_address=self.dashboard_address or "",
         )
 
-        return distributed.Client()
+        self._initialised = True
+
+    @property
+    def client(self) -> distributed.Client:
+        if not self._initialised:
+            raise RuntimeError(_("must initialise the cluster before getting a client"))
+        if self._client is None:
+            self._client = distributed.Client()
+        return self._client

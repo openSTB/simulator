@@ -137,6 +137,9 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
             self.fill_value = fill_value
 
     def run(self, config: PointSimulationConfig):
+        config["cluster"].initialise()
+        client = config["cluster"].client
+
         flatten_system(cast(MutableMapping[str, Any], config))
 
         # Determine the number of receivers being simulated.
@@ -189,101 +192,96 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
             targets[start : start + len(target), 3] = target.reflectivity
             start += len(target)
 
-        with config["cluster"] as client:
-            # Split the targets into chunks and distribute.
-            N_chunks = int(np.ceil(N_targets / self.targets_per_chunk))
-            chunks = np.array_split(targets, N_chunks)
-            chunks = client.scatter(chunks, broadcast=False)
+        # Split the targets into chunks and distribute.
+        N_chunks = int(np.ceil(N_targets / self.targets_per_chunk))
+        chunks = np.array_split(targets, N_chunks)
+        chunks = client.scatter(chunks, broadcast=False)
 
-            # Collate and send common details to all workers.
-            scale_factors = (
-                config["transmitter"].scale_factors + config["scale_factors"]
-            )
-            common = client.scatter(
-                _ChunkCommon(
-                    f=f + self.baseband_frequency,
-                    S=S,
-                    travel_time=config["travel_time"],
-                    trajectory=config["trajectory"],
-                    tx_position=config["transmitter"].position,
-                    tx_ori=config["transmitter"].orientation.ndarray,
-                    environment=config["environment"],
-                    scale_factors=scale_factors,
-                    signal_frequency_bounds=signal_frequency_bounds,
-                ),
-                broadcast=True,
-            )
+        # Collate and send common details to all workers.
+        scale_factors = config["transmitter"].scale_factors + config["scale_factors"]
+        common = client.scatter(
+            _ChunkCommon(
+                f=f + self.baseband_frequency,
+                S=S,
+                travel_time=config["travel_time"],
+                trajectory=config["trajectory"],
+                tx_position=config["transmitter"].position,
+                tx_ori=config["transmitter"].orientation.ndarray,
+                environment=config["environment"],
+                scale_factors=scale_factors,
+                signal_frequency_bounds=signal_frequency_bounds,
+            ),
+            broadcast=True,
+        )
 
-            # Prepare the output storage. We checked it was non-existent in __init__,
-            # but check again in case the path has been created in the meantime.
-            if self.output_filename.exists():
-                raise ValueError(_("specified output path already exists"))
-            store = zarr.DirectoryStore(self.output_filename)
-            storage = zarr.group(store=store)
-            storage.create_dataset(
-                "pressure", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
-            )
-            storage.create_dataset("sample_time", shape=(Ns,), chunks=(Ns,), dtype="f8")
-            storage["sample_time"][:] = t
-            storage.create_dataset(
-                "ping_start_time", shape=(Np,), chunks=(Np,), dtype="f8"
-            )
-            storage["ping_start_time"][:] = ping_start
-            storage.attrs.baseband_frequency = self.baseband_frequency
-            storage.attrs.fill_value = self.fill_value
-            storage.attrs.sample_rate = self.sample_rate
+        # Prepare the output storage. We checked it was non-existent in __init__,
+        # but check again in case the path has been created in the meantime.
+        if self.output_filename.exists():
+            raise ValueError(_("specified output path already exists"))
+        store = zarr.DirectoryStore(self.output_filename)
+        storage = zarr.group(store=store)
+        storage.create_dataset(
+            "pressure", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
+        )
+        storage.create_dataset("sample_time", shape=(Ns,), chunks=(Ns,), dtype="f8")
+        storage["sample_time"][:] = t
+        storage.create_dataset("ping_start_time", shape=(Np,), chunks=(Np,), dtype="f8")
+        storage["ping_start_time"][:] = ping_start
+        storage.attrs.baseband_frequency = self.baseband_frequency
+        storage.attrs.fill_value = self.fill_value
+        storage.attrs.sample_rate = self.sample_rate
 
-            for p in range(Np):
-                for r in range(Nr):
-                    # Simulate each chunk of targets.
-                    chunk_futures = [
-                        client.submit(
-                            _pointsim_chunk,
-                            common,
-                            targets=chunk,
-                            ping_time=ping_start[p],
-                            rx_position=config["receivers"][r].position,
-                            rx_ori=config["receivers"][r].orientation.ndarray,
-                            rx_scale_factors=config["receivers"][r].scale_factors,
-                        )
-                        for chunk in chunks
-                    ]
-
-                    # To avoid keeping all results in memory, generate a reduction tree
-                    # which successively sums groups of intermediate results until we
-                    # get a final result.
-                    N_per_sum = 3
-                    while len(chunk_futures) > 1:
-                        new_futures = []
-                        for i in range(0, len(chunk_futures), N_per_sum):
-                            tmp = chunk_futures[i : i + N_per_sum]
-                            if len(tmp) == 1:
-                                new_futures.append(tmp[0])
-                            else:
-                                new_futures.append(client.submit(np.sum, tmp, axis=0))
-                            del tmp
-                        chunk_futures = new_futures
-                        del new_futures
-
-                    # The final sum is the only future left. Take the inverse FFT.
-                    ping_result = client.submit(
-                        np.fft.ifft,
-                        client.submit(np.fft.ifftshift, chunk_futures[0]),
+        for p in range(Np):
+            for r in range(Nr):
+                # Simulate each chunk of targets.
+                chunk_futures = [
+                    client.submit(
+                        _pointsim_chunk,
+                        common,
+                        targets=chunk,
+                        ping_time=ping_start[p],
+                        rx_position=config["receivers"][r].position,
+                        rx_ori=config["receivers"][r].orientation.ndarray,
+                        rx_scale_factors=config["receivers"][r].scale_factors,
                     )
-                    del chunk_futures
+                    for chunk in chunks
+                ]
 
-                    # Wait until the result is available and store.
-                    distributed.wait(ping_result)
-                    storage["pressure"][p, r, :] = ping_result.result()
-                    del ping_result
+                # To avoid keeping all results in memory, generate a reduction tree
+                # which successively sums groups of intermediate results until we
+                # get a final result.
+                N_per_sum = 3
+                while len(chunk_futures) > 1:
+                    new_futures = []
+                    for i in range(0, len(chunk_futures), N_per_sum):
+                        tmp = chunk_futures[i : i + N_per_sum]
+                        if len(tmp) == 1:
+                            new_futures.append(tmp[0])
+                        else:
+                            new_futures.append(client.submit(np.sum, tmp, axis=0))
+                        del tmp
+                    chunk_futures = new_futures
+                    del new_futures
 
-            # Remove references to the data we scattered at the start. Although this
-            # will go out of scope when we exit the context manager, the cluster may not
-            # have processed this when the context manager exiting triggers a shutdown.
-            # The shutdown sees the data still on the workers and issues warnings about
-            # a loss of computed tasks.
-            del chunks
-            del common
+                # The final sum is the only future left. Take the inverse FFT.
+                ping_result = client.submit(
+                    np.fft.ifft,
+                    client.submit(np.fft.ifftshift, chunk_futures[0]),
+                )
+                del chunk_futures
+
+                # Wait until the result is available and store.
+                distributed.wait(ping_result)
+                storage["pressure"][p, r, :] = ping_result.result()
+                del ping_result
+
+        # Remove references to the data we scattered at the start. Although this
+        # will go out of scope when we exit the context manager, the cluster may not
+        # have processed this when the context manager exiting triggers a shutdown.
+        # The shutdown sees the data still on the workers and issues warnings about
+        # a loss of computed tasks.
+        del chunks
+        del common
 
         if "result_converter" in config:
             success = config["result_converter"].convert(

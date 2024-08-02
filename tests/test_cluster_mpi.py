@@ -48,15 +48,21 @@ def workerfunc(i):
     return i, MPI.COMM_WORLD.Get_rank()
 
 
-with DaskMPICluster() as client:
-    futures = client.map(workerfunc, [0, 1, 2, 3, 4, 5])
-    wait(futures)
+# Initialise twice to ensure it handles this.
+c = DaskMPICluster()
+c.initialise()
+c.initialise()
 
-    results = [future.result() for future in futures]
-    jobs = {result[0] for result in results}
-    print(jobs)
-    ranks = {result[1] for result in results}
-    print(ranks)
+assert c.client.status == "running"
+
+futures = c.client.map(workerfunc, [0, 1, 2, 3, 4, 5])
+wait(futures)
+
+results = [future.result() for future in futures]
+jobs = {result[0] for result in results}
+print(jobs)
+ranks = {result[1] for result in results}
+print(ranks)
 """
     )
 
@@ -83,3 +89,10 @@ with DaskMPICluster() as client:
     # scheduler and rank 1 to run the controlling script, leaving 2 and 3 for tasks.
     ranks = ast.literal_eval(output[1])
     assert ranks == {2, 3}
+
+
+def test_cluster_mpi_error():
+    """DaskMPICluster error handling"""
+    c = DaskMPICluster()
+    with pytest.raises(RuntimeError, match="must initialise.+before"):
+        c.client
