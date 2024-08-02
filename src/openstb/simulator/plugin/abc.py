@@ -58,6 +58,22 @@ class Simulation(Plugin, Generic[SimulationConfig]):
         pass
 
 
+class ConfigLoader(Plugin):
+    """A plugin which can load simulation configuration from somewhere."""
+
+    @abstractmethod
+    def load(self) -> dict:
+        """Load the configuration.
+
+        Returns
+        -------
+        dict
+            A dictionary containing the configuration.
+
+        """
+        pass
+
+
 class DaskCluster(Plugin):
     """Interface to a Dask cluster to perform computations.
 

@@ -178,6 +178,12 @@ def load_plugin(group: str, plugin_spec: PluginSpec) -> abc.Plugin:
 # about the return type.
 
 
+def config_loader(plugin_spec: PluginSpec) -> abc.ConfigLoader:
+    return cast(
+        abc.ConfigLoader, load_plugin("openstb.simulator.config_loader", plugin_spec)
+    )
+
+
 def dask_cluster(plugin_spec: PluginSpec) -> abc.DaskCluster:
     return cast(
         abc.DaskCluster, load_plugin("openstb.simulator.dask_cluster", plugin_spec)
