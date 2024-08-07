@@ -17,27 +17,21 @@ detailed checking.
 """
 
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic
 
 import dask.distributed
 import numpy as np
 from numpy.typing import ArrayLike
 import quaternionic
 
+from openstb.simulator.types import SimulationConfig
+
 
 class Plugin(ABC):
     pass
-
-
-#: Generic type for the configuration of a simulation. Each type of simulation will
-#: require a different configuration structure. Here we simply say it will be a mapping
-#: from string keys to any type of object, and allow the plugins to define a more
-#: specific type.
-SimulationConfig = TypeVar("SimulationConfig", bound=Mapping[str, Any])
 
 
 class Simulation(Plugin, Generic[SimulationConfig]):
