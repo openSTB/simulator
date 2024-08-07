@@ -3,7 +3,7 @@
 
 from openstb.simulator.plugin import loader
 from openstb.simulator.plugin.abc import Signal, System, Transducer
-from openstb.simulator.plugin.loader import PluginSpec
+from openstb.simulator.types import PluginOrSpec
 
 
 class GenericSystem(System):
@@ -11,9 +11,9 @@ class GenericSystem(System):
 
     def __init__(
         self,
-        transmitter: PluginSpec | None,
-        receivers: list[PluginSpec] | None,
-        signal: PluginSpec | None,
+        transmitter: PluginOrSpec[Transducer] | None,
+        receivers: list[PluginOrSpec[Transducer]] | None,
+        signal: PluginOrSpec[Signal] | None,
     ):
         """
         Parameters

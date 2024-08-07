@@ -5,10 +5,11 @@ import hashlib
 import importlib.metadata
 import importlib.util
 from pathlib import Path
-from typing import Any, Literal, TypedDict, cast, overload
+from typing import Literal, cast, overload
 
 from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin import abc
+from openstb.simulator.types import PluginOrSpec
 
 
 _ = domain_translator("openstb.simulator")
@@ -148,22 +149,7 @@ def load_plugin_class(group: str, name: str) -> type[abc.Plugin]:
     return getattr(mod, classname)
 
 
-class PluginSpecDict(TypedDict):
-    """Specification for a plugin."""
-
-    #: Name of the plugin. See `load_plugin_class` for the supported types.
-    name: str
-
-    #: Parameters for the plugin.
-    parameters: dict[str, Any]
-
-
-#: Specification for a plugin: either a `PluginSpecDict` or an existing instance of a
-#: plugin.
-PluginSpec = PluginSpecDict | abc.Plugin
-
-
-def load_plugin(group: str, plugin_spec: PluginSpec) -> abc.Plugin:
+def load_plugin(group: str, plugin_spec: PluginOrSpec[abc.Plugin]) -> abc.Plugin:
     # Note: we cannot check isinstance(..., Mapping) here as plugins may implement the
     # Mapping interface.
     if isinstance(plugin_spec, dict):
@@ -178,52 +164,54 @@ def load_plugin(group: str, plugin_spec: PluginSpec) -> abc.Plugin:
 # about the return type.
 
 
-def config_loader(plugin_spec: PluginSpec) -> abc.ConfigLoader:
+def config_loader(plugin_spec: PluginOrSpec[abc.ConfigLoader]) -> abc.ConfigLoader:
     return cast(
         abc.ConfigLoader, load_plugin("openstb.simulator.config_loader", plugin_spec)
     )
 
 
-def dask_cluster(plugin_spec: PluginSpec) -> abc.DaskCluster:
+def dask_cluster(plugin_spec: PluginOrSpec[abc.DaskCluster]) -> abc.DaskCluster:
     return cast(
         abc.DaskCluster, load_plugin("openstb.simulator.dask_cluster", plugin_spec)
     )
 
 
-def environment(plugin_spec: PluginSpec) -> abc.Environment:
+def environment(plugin_spec: PluginOrSpec[abc.Environment]) -> abc.Environment:
     return cast(
         abc.Environment, load_plugin("openstb.simulator.environment", plugin_spec)
     )
 
 
-def ping_times(plugin_spec: PluginSpec) -> abc.PingTimes:
+def ping_times(plugin_spec: PluginOrSpec[abc.PingTimes]) -> abc.PingTimes:
     return cast(abc.PingTimes, load_plugin("openstb.simulator.ping_times", plugin_spec))
 
 
-def point_targets(plugin_spec: PluginSpec) -> abc.PointTargets:
+def point_targets(plugin_spec: PluginOrSpec[abc.PointTargets]) -> abc.PointTargets:
     return cast(
         abc.PointTargets, load_plugin("openstb.simulator.point_targets", plugin_spec)
     )
 
 
-def result_converter(plugin_spec: PluginSpec) -> abc.ResultConverter:
+def result_converter(
+    plugin_spec: PluginOrSpec[abc.ResultConverter],
+) -> abc.ResultConverter:
     return cast(
         abc.ResultConverter,
         load_plugin("openstb.simulator.result_converter", plugin_spec),
     )
 
 
-def scale_factor(plugin_spec: PluginSpec) -> abc.ScaleFactor:
+def scale_factor(plugin_spec: PluginOrSpec[abc.ScaleFactor]) -> abc.ScaleFactor:
     return cast(
         abc.ScaleFactor, load_plugin("openstb.simulator.scale_factor", plugin_spec)
     )
 
 
-def signal(plugin_spec: PluginSpec) -> abc.Signal:
+def signal(plugin_spec: PluginOrSpec[abc.Signal]) -> abc.Signal:
     return cast(abc.Signal, load_plugin("openstb.simulator.signal", plugin_spec))
 
 
-def signal_window(plugin_spec: PluginSpec) -> abc.SignalWindow:
+def signal_window(plugin_spec: PluginOrSpec[abc.SignalWindow]) -> abc.SignalWindow:
     """Load a signal window plugin.
 
     Parameters
@@ -243,23 +231,23 @@ def signal_window(plugin_spec: PluginSpec) -> abc.SignalWindow:
     )
 
 
-def system(plugin_spec: PluginSpec) -> abc.System:
+def system(plugin_spec: PluginOrSpec[abc.System]) -> abc.System:
     return cast(abc.System, load_plugin("openstb.simulator.system", plugin_spec))
 
 
-def trajectory(plugin_spec: PluginSpec) -> abc.Trajectory:
+def trajectory(plugin_spec: PluginOrSpec[abc.Trajectory]) -> abc.Trajectory:
     return cast(
         abc.Trajectory, load_plugin("openstb.simulator.trajectory", plugin_spec)
     )
 
 
-def transducer(plugin_spec: PluginSpec) -> abc.Transducer:
+def transducer(plugin_spec: PluginOrSpec[abc.Transducer]) -> abc.Transducer:
     return cast(
         abc.Transducer, load_plugin("openstb.simulator.transducer", plugin_spec)
     )
 
 
-def travel_time(plugin_spec: PluginSpec) -> abc.TravelTime:
+def travel_time(plugin_spec: PluginOrSpec[abc.TravelTime]) -> abc.TravelTime:
     return cast(
         abc.TravelTime, load_plugin("openstb.simulator.travel_time", plugin_spec)
     )

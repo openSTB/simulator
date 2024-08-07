@@ -5,7 +5,8 @@ import numpy as np
 from numpy.typing import ArrayLike
 
 from openstb.simulator.plugin import abc
-from openstb.simulator.plugin.loader import PluginSpec, signal_window
+from openstb.simulator.plugin.loader import signal_window
+from openstb.simulator.types import PluginOrSpec
 
 
 class LFMChirp(abc.Signal):
@@ -18,7 +19,7 @@ class LFMChirp(abc.Signal):
         duration: float,
         rms_spl: float,
         rms_after_window: bool = True,
-        window: PluginSpec | None = None,
+        window: PluginOrSpec[abc.SignalWindow] | None = None,
     ):
         """
         Parameters

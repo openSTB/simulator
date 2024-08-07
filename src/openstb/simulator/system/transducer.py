@@ -7,7 +7,8 @@ import quaternionic
 
 from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin.abc import ScaleFactor, Transducer
-from openstb.simulator.plugin.loader import PluginSpec, scale_factor
+from openstb.simulator.plugin.loader import scale_factor
+from openstb.simulator.types import PluginOrSpec
 
 
 _ = domain_translator("openstb.simulator", plural=False)
@@ -18,7 +19,7 @@ class GenericTransducer(Transducer):
         self,
         position: ArrayLike,
         orientation: ArrayLike | quaternionic.QArray,
-        beampattern: PluginSpec | None = None,
+        beampattern: PluginOrSpec[ScaleFactor] | None = None,
     ):
         self._position = np.array(position, dtype=float)
         if self._position.shape != (3,):
