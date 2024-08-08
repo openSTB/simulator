@@ -152,7 +152,7 @@ def load_plugin_class(group: str, name: str) -> type[T_Plugin]:
 
 #: Lookup table of functions which have been registered as able to load a particular
 #: class of plugin.
-registered_loaders: dict[abc.Plugin, F_PluginLoader] = {}
+registered_loaders: dict[type, F_PluginLoader] = {}
 
 
 # For when the decorator is used directly (without parameters).
