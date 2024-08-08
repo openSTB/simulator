@@ -50,6 +50,15 @@ class Simulation(Plugin, Generic[SimulationConfig]):
         """
         pass
 
+    @abstractmethod
+    def config_class(src) -> type[SimulationConfig]:
+        """The simulation class for this type of simulation.
+
+        Note that this is the class, not an instance of the class.
+
+        """
+        pass
+
 
 class ConfigLoader(Plugin):
     """A plugin which can load simulation configuration from somewhere."""

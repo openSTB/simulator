@@ -136,6 +136,10 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         else:
             self.fill_value = fill_value
 
+    @property
+    def config_class(self):
+        return PointSimulationConfig
+
     def run(self, config: PointSimulationConfig):
         config["cluster"].initialise()
         client = config["cluster"].client
