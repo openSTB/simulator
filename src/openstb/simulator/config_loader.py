@@ -7,6 +7,7 @@ import tomllib
 
 from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin.abc import ConfigLoader
+from openstb.simulator.types import PluginSpec
 
 
 _ = domain_translator("openstb.simulator", plural=False)
@@ -137,13 +138,14 @@ class TOMLLoader(ConfigLoader):
         return current
 
     @staticmethod
-    def _collect_parameters(filename: Path, entry: str, spec: dict) -> dict:
+    def _collect_parameters(filename: Path, entry: str, spec: dict) -> PluginSpec:
         """Collect names and parameters into a PluginSpec dictionary.
 
         Parameters
         ----------
         filename : Path
-            Filename the entry was loaded from. Used for error reporting.
+            Filename the entry was loaded from. Used for error reporting and to set the
+            source of the PluginSpec.
         entry : str
             Name of the table. Used for error reporting.
         spec : dict
@@ -167,4 +169,5 @@ class TOMLLoader(ConfigLoader):
         return {
             "name": name,
             "parameters": spec,
+            "spec_source": filename,
         }

@@ -6,7 +6,7 @@ import importlib.metadata
 import importlib.util
 import inspect
 from pathlib import Path
-from typing import Callable, Literal, overload
+from typing import Any, Callable, Literal, overload
 
 from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin import abc
@@ -249,7 +249,18 @@ def load_plugin(group: str, plugin_spec: PluginOrSpec[T_Plugin]) -> T_Plugin:
     # Mapping interface.
     if isinstance(plugin_spec, dict):
         cls: type[T_Plugin] = load_plugin_class(group, plugin_spec["name"])
-        return cls(**plugin_spec.get("parameters", {}))
+
+        # Start with parameters from the spec.
+        params: dict[str, Any] = {}
+        if "parameters" in plugin_spec:
+            params.update(plugin_spec["parameters"])
+
+        # If the plugin initialiser accepts a spec_source parameter, add that.
+        cls_params = inspect.signature(cls).parameters
+        if "spec_source" in cls_params and "spec_source" in plugin_spec:
+            params["spec_source"] = plugin_spec["spec_source"]
+
+        return cls(**params)
 
     return plugin_spec
 

@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
 from collections.abc import Mapping
-from typing import Any, Callable, TypedDict, TypeVar, Union
+from os import PathLike
+from typing import Any, Callable, NotRequired, TypedDict, TypeVar, Union
 
 
 class PluginSpec(TypedDict):
@@ -13,6 +14,12 @@ class PluginSpec(TypedDict):
 
     #: Parameters for the plugin.
     parameters: Mapping[str, Any]
+
+    #: Source of this specification, for example the configuration file it was loaded
+    #: from. This may be used for error reporting, and it may also be used by the plugin
+    #: if it needs to load data based on the original source (e.g., from a file with a
+    #: filename relative to the original configuration file).
+    spec_source: NotRequired[str | PathLike[str]]
 
 
 #: Generic type variable representing some type of plugin.
