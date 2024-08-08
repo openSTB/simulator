@@ -65,6 +65,9 @@ rectangular_beampattern = "openstb.simulator.scale_factor.beampattern:Rectangula
 [project.entry-points."openstb.simulator.signal"]
 lfm_chirp = "openstb.simulator.system.signal:LFMChirp"
 
+[project.entry-points."openstb.simulator.simulation"]
+points = "openstb.simulator.simulation.points:PointSimulation"
+
 [project.entry-points."openstb.simulator.signal_window"]
 blackman = "openstb.simulator.system.signal_windows:BlackmanWindow"
 blackman_harris = "openstb.simulator.system.signal_windows:BlackmanHarrisWindow"

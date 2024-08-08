@@ -310,6 +310,11 @@ def signal_window(plugin_spec: PluginOrSpec[abc.SignalWindow]) -> abc.SignalWind
     return load_plugin("openstb.simulator.signal_window", plugin_spec)
 
 
+@register_loader(name="simulation")
+def simulation(plugin_spec: PluginOrSpec[abc.Simulation]) -> abc.Simulation:
+    return load_plugin("openstb.simulator.simulation", plugin_spec)
+
+
 @register_loader(name="system")
 def system(plugin_spec: PluginOrSpec[abc.System]) -> abc.System:
     return load_plugin("openstb.simulator.system", plugin_spec)

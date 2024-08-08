@@ -110,7 +110,7 @@ def _pointsim_chunk(
 class PointSimulation(abc.Simulation[PointSimulationConfig]):
     def __init__(
         self,
-        output_filename: os.PathLike[str] | str,
+        result_filename: os.PathLike[str] | str,
         targets_per_chunk: int,
         sample_rate: float,
         baseband_frequency: float,
@@ -118,8 +118,8 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         fill_value: complex | str = "nan",
     ):
         # Do not overwrite existing results.
-        self.output_filename = Path(output_filename)
-        if self.output_filename.exists():
+        self.result_filename = Path(result_filename)
+        if self.result_filename.exists():
             raise ValueError(_("specified output path already exists"))
 
         self.targets_per_chunk = targets_per_chunk
@@ -220,9 +220,9 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
 
         # Prepare the output storage. We checked it was non-existent in __init__,
         # but check again in case the path has been created in the meantime.
-        if self.output_filename.exists():
+        if self.result_filename.exists():
             raise ValueError(_("specified output path already exists"))
-        store = zarr.DirectoryStore(self.output_filename)
+        store = zarr.DirectoryStore(self.result_filename)
         storage = zarr.group(store=store)
         storage.create_dataset(
             "pressure", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
