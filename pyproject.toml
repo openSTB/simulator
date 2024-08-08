@@ -12,6 +12,7 @@ version = "0.1.0"
 
 requires-python = ">=3.11"
 dependencies = [
+  "click",
   "cryptography",
   "dask[distributed]",
   "numpy",
@@ -29,6 +30,14 @@ MPI = ["dask-mpi", "mpi4py"]
 # Support for development and testing.
 tests = ["pytest", "pytest-cov"]
 dev = ["black", "flake8", "isort", "mypy", "openstb-simulator[tests]"]
+
+
+#
+# Install the CLI.
+#
+
+[project.scripts]
+openstb-sim = "openstb.simulator.cli:openstb_sim"
 
 
 #
