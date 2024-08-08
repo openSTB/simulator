@@ -29,16 +29,16 @@ class PointSimulationConfig(TypedDict):
     ping_times: abc.PingTimes
 
     #: System information.
-    system: abc.System
+    system: NotRequired[abc.System]
 
     #: Transducer used for transmitting the signal.
-    transmitter: abc.Transducer
+    transmitter: NotRequired[abc.Transducer]
 
     #: Plugin representing the transmitted signal.
-    signal: abc.Signal
+    signal: NotRequired[abc.Signal]
 
     #: Transducers for which the received signal should be simulated.
-    receivers: list[abc.Transducer]
+    receivers: NotRequired[list[abc.Transducer]]
 
     #: A list of plugins giving the point targets to simulate.
     targets: list[abc.PointTargets]
@@ -53,7 +53,7 @@ class PointSimulationConfig(TypedDict):
     travel_time: abc.TravelTime
 
     #: Plugins which will calculate amplitude scale factors for each echo.
-    scale_factors: list[abc.ScaleFactor]
+    scale_factors: NotRequired[list[abc.ScaleFactor]]
 
     #: Plugin to convert the output into a desired format.
     result_converter: NotRequired[abc.ResultConverter]
@@ -141,10 +141,10 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         return PointSimulationConfig
 
     def run(self, config: PointSimulationConfig):
+        flatten_system(cast(MutableMapping[str, Any], config))
+
         config["cluster"].initialise()
         client = config["cluster"].client
-
-        flatten_system(cast(MutableMapping[str, Any], config))
 
         # Determine the number of receivers being simulated.
         Nr = len(config["receivers"])

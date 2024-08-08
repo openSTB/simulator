@@ -17,6 +17,7 @@ def flatten_system(
     transmitter: str | None = "transmitter",
     receivers: str | None = "receivers",
     signal: str | None = "signal",
+    check: bool = True,
 ):
     """Extract system-defined plugins and place at the top level of the configuration.
 
@@ -38,44 +39,69 @@ def flatten_system(
 
     """
     system_plugin: abc.System = config.get(system, None)
-    if system_plugin is None:
-        return
 
     if transmitter is not None:
-        system_tx = system_plugin.transmitter
-        if system_tx is not None:
-            config_tx = config.get(transmitter, None)
-            if config_tx is not None:
+        if system_plugin is not None:
+            system_tx = system_plugin.transmitter
+            if system_tx is not None:
+                config_tx = config.get(transmitter, None)
+                if config_tx is not None:
+                    raise ValueError(
+                        _(
+                            "the system plugin and the simulation configuration both "
+                            "specify a transmitter"
+                        )
+                    )
+                config[transmitter] = system_tx
+        if check:
+            if transmitter not in config or config[transmitter] is None:
                 raise ValueError(
                     _(
-                        "the system plugin and the simulation configuration both "
-                        "specify a transmitter"
+                        "a transmitter must be specified, either directly or through a "
+                        "system plugin"
                     )
                 )
-            config[transmitter] = system_tx
 
     if receivers is not None:
-        system_rx = system_plugin.receivers
-        if system_rx is not None:
-            config_rx = config.get(receivers, None)
-            if config_rx is not None:
+        if system_plugin is not None:
+            system_rx = system_plugin.receivers
+            if system_rx is not None:
+                config_rx = config.get(receivers, None)
+                if config_rx is not None:
+                    raise ValueError(
+                        _(
+                            "the system plugin and the simulation configuration both "
+                            "specify receivers"
+                        )
+                    )
+                config[receivers] = system_rx
+        if check:
+            if receivers not in config or config[receivers] is None:
                 raise ValueError(
                     _(
-                        "the system plugin and the simulation configuration both "
-                        "specify receivers"
+                        "the receivers must be specified, either directly or through a "
+                        "system plugin"
                     )
                 )
-            config[receivers] = system_rx
 
     if signal is not None:
-        system_signal = system_plugin.signal
-        if system_signal is not None:
-            config_signal = config.get(signal, None)
-            if config_signal is not None:
+        if system_plugin is not None:
+            system_signal = system_plugin.signal
+            if system_signal is not None:
+                config_signal = config.get(signal, None)
+                if config_signal is not None:
+                    raise ValueError(
+                        _(
+                            "the system plugin and the simulation configuration both "
+                            "specify a signal"
+                        )
+                    )
+                config[signal] = system_signal
+        if check:
+            if signal not in config or config[signal] is None:
                 raise ValueError(
                     _(
-                        "the system plugin and the simulation configuration both "
-                        "specify a signal"
+                        "a signal must be specified, either directly or through a "
+                        "system plugin"
                     )
                 )
-            config[signal] = system_signal
