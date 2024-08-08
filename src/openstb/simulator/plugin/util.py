@@ -3,7 +3,7 @@
 
 from collections.abc import MutableMapping, Sequence
 import inspect
-from typing import Any, List, Literal, NotRequired, get_args, get_origin
+from typing import Any, List, Literal, NotRequired, cast, get_args, get_origin
 import warnings
 
 from openstb.i18n.support import domain_translator
@@ -13,6 +13,43 @@ from openstb.simulator.types import SimulationConfig
 
 _ = domain_translator("openstb.simulator")
 _n = domain_translator("openstb.simulator", plural=True)
+
+
+def find_config_loader(
+    source: str,
+) -> tuple[str, type[abc.ConfigLoader]] | tuple[None, None]:
+    """Try to find a config loader plugin.
+
+    This is intended for use in a user interface. Given the source (e.g, the filename)
+    of the desired configuration, it searches through the registered `ConfigLoader`
+    plugins for one which says it might be able to handle it.
+
+    Note that the plugins may return false positives or false negatives when asked about
+    their ability to handle a source (see the `could_handle` method of the
+    `ConfigLoader` class for details). If a class is returned, there is no guarantee it
+    will actually be able to handle a source.
+
+    Parameters
+    ----------
+    source : str
+        The provided configuration source.
+
+    Returns
+    -------
+    name : str, None
+        The name of the plugin to use, or None if no plugin was found.
+    cls : openstb.simulator.plugin.abc.ConfigLoader, None
+        The plugin to use, or None if no plugin was found.
+
+    """
+    plugins = cast(
+        list[tuple[str, str, type[abc.ConfigLoader]]],
+        loader.registered_plugins("openstb.simulator.config_loader", load=True),
+    )
+    for name, _, cls in plugins:
+        if cls.could_handle(source):
+            return name, cls
+    return None, None
 
 
 def flatten_system(

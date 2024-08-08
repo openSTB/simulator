@@ -50,6 +50,7 @@ class Simulation(Plugin, Generic[SimulationConfig]):
         """
         pass
 
+    @property
     @abstractmethod
     def config_class(src) -> type[SimulationConfig]:
         """The simulation class for this type of simulation.
@@ -71,6 +72,31 @@ class ConfigLoader(Plugin):
         -------
         dict
             A dictionary containing the configuration.
+
+        """
+        pass
+
+    @classmethod
+    @abstractmethod
+    def could_handle(cls, source: str) -> bool:
+        """Guess if this plugin could load a given configuration source.
+
+        This is intended for use in user interfaces where a configuration source, such
+        as a filename, is given by the user. This method should guess if it would be
+        able to load a configuration from the source. This check should be quick and
+        without side-effects; false positives and false negatives are acceptable. In the
+        former case, the subsequent attempt to load will result in an error and the user
+        being told to specify a config loader plugin. If no plugins return True, then
+        the user will again be told to specify a plugin.
+
+        Parameters
+        ----------
+        source : str
+            The provided configuration source.
+
+        Returns
+        -------
+        bool
 
         """
         pass

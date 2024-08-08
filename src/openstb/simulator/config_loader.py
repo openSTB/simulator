@@ -38,6 +38,11 @@ class TOMLLoader(ConfigLoader):
         self.filename = Path(filename)
         self._who_defined: dict[str, Path] = {}
 
+    @classmethod
+    def could_handle(cls, source: str) -> bool:
+        # Assume any file ending with .toml could be loadable.
+        return source.endswith(".toml")
+
     def load(self) -> dict:
         self._who_defined = {}
         return self._load_file(self.filename)
