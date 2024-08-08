@@ -38,6 +38,7 @@ class TOMLLoader(ConfigLoader):
         self._who_defined: dict[str, Path] = {}
 
     def load(self) -> dict:
+        self._who_defined = {}
         return self._load_file(self.filename)
 
     def _load_file(self, filename: Path, current: dict | None = None) -> dict:
@@ -76,22 +77,39 @@ class TOMLLoader(ConfigLoader):
             )
 
         # Try to merge our config into the current.
-        for k, v in config.items():
+        for entry, values in config.items():
+            # We don't expect any other top-level entries. All values should be tables
+            # (dicts) or arrays (lists) of tables. Collect the names and parameters into
+            # a proper PluginSpec dictionary.
+            if isinstance(values, dict):
+                values = self._collect_parameters(filename, entry, values)
+            elif isinstance(values, list):
+                values = [
+                    self._collect_parameters(filename, f"{entry}[{i}]", value)
+                    for i, value in enumerate(values)
+                ]
+            else:
+                raise ValueError(
+                    _("{filename}: unexpected top-level entry {name}").format(
+                        filename=filename, name=entry
+                    )
+                )
+
             # New key => easy.
-            if k not in current:
-                current[k] = v
+            if entry not in current:
+                current[entry] = values
                 continue
 
             # Existing key is a list. We allow another list or a single table.
-            if isinstance(current[k], list):
-                if isinstance(v, list):
-                    current[k].extend(v)
-                elif isinstance(v, dict):
-                    current[k].append(v)
+            if isinstance(current[entry], list):
+                if isinstance(values, list):
+                    current[entry].extend(values)
+                elif isinstance(values, dict):
+                    current[entry].append(values)
                 else:
                     raise ValueError(
                         _("{filename}: {name} must be a table").format(
-                            filename=filename, name=k
+                            filename=filename, name=entry
                         )
                     )
                 continue
@@ -99,13 +117,15 @@ class TOMLLoader(ConfigLoader):
             # Don't allow overwriting.
             msg = _("{filename} tried to overwrite value of {table} set by {original}")
             raise ValueError(
-                msg.format(filename=filename, original=self._who_defined[k], table=k)
+                msg.format(
+                    filename=filename, original=self._who_defined[entry], table=entry
+                )
             )
 
         # Update which tables came from which files. This will overwrite the source of
         # lists, but we don't need those.
-        for k in config.keys():
-            self._who_defined[k] = filename
+        for entry in config.keys():
+            self._who_defined[entry] = filename
 
         # Process any includes.
         for include in includes:
@@ -115,3 +135,36 @@ class TOMLLoader(ConfigLoader):
             self._load_file(includefn, current)
 
         return current
+
+    @staticmethod
+    def _collect_parameters(filename: Path, entry: str, spec: dict) -> dict:
+        """Collect names and parameters into a PluginSpec dictionary.
+
+        Parameters
+        ----------
+        filename : Path
+            Filename the entry was loaded from. Used for error reporting.
+        entry : str
+            Name of the table. Used for error reporting.
+        spec : dict
+            The values of the table loaded from the file.
+
+        Returns
+        -------
+        dict
+            A PluginSpec dictionary. The ``name`` entry from ``spec`` will be copied,
+            and all other items will be placed into a dictionary under the
+            ``parameters`` key.
+
+        """
+        name = spec.pop("name", None)
+        if name is None:
+            raise ValueError(
+                _("{filename}: no plugin name given for entry {name}").format(
+                    filename=filename, name=entry
+                )
+            )
+        return {
+            "name": name,
+            "parameters": spec,
+        }
