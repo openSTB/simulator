@@ -142,8 +142,7 @@ class TOMLLoader(ConfigLoader):
 
         return current
 
-    @staticmethod
-    def _collect_parameters(filename: Path, entry: str, spec: dict) -> PluginSpec:
+    def _collect_parameters(self, filename: Path, entry: str, spec: dict) -> PluginSpec:
         """Collect names and parameters into a PluginSpec dictionary.
 
         Parameters
@@ -171,6 +170,12 @@ class TOMLLoader(ConfigLoader):
                     filename=filename, name=entry
                 )
             )
+
+        # Handle nested plugin specs (e.g., transducer beampatterns, signal windows).
+        for k in spec.keys():
+            if isinstance(spec[k], dict):
+                spec[k] = self._collect_parameters(filename, f"{entry}.{k}", spec[k])
+
         return {
             "name": name,
             "parameters": spec,
