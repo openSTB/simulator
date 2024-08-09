@@ -264,7 +264,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
         {
             "name": "numpy",
             "parameters": {
-                "filename": "example_sim.npz",
+                "filename": "simple_points.npz",
                 "compress": False,
             },
         }
@@ -278,7 +278,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
     #     {
     #         "name": "matlab",
     #         "parameters": {
-    #             "filename": "example_sim.mat",
+    #             "filename": "simple_points.mat",
     #             "format": "5",
     #             "long_field_names": False,
     #             "do_compression": False,
@@ -294,7 +294,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
     # We manually specify how many targets to include in each chunk of work, and the
     # details about the system sampling. The output will be in the complex baseband.
     sim = PointSimulation(
-        "example_sim.zarr",
+        result_filename="simple_points.zarr",
         targets_per_chunk=1000,
         sample_rate=30e3,
         baseband_frequency=110e3,

@@ -17,10 +17,10 @@ src/openstb/locale
 .coverage
 tests/coverage
 
-# Scratch space which Dask may create during testing.
+# Scratch space which Dask may create during testing or running examples.
 dask-scratch-space/
 
-# Output of example simulation.
-example_sim.mat
-example_sim.npz
-example_sim.zarr/
+# Output of example simulations.
+*.mat
+*.npz
+*.zarr

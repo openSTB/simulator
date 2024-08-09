@@ -5,8 +5,8 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 
-# This assumes you used the NumPy output converter in example_sim.py.
-results = np.load("example_sim.npz")
+# This assumes you used the NumPy output converter.
+results = np.load("simple_points.npz")
 
 # This loads the results as a mapping instance.
 t = results["sample_time"]

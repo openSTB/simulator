@@ -1,0 +1,218 @@
+# SPDX-FileCopyrightText: openSTB contributors
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+
+#
+# TOML configuration file for an openSTB simulation of simple point targets.
+#
+# See https://toml.io/ for a full specification of the TOML format.
+#
+
+
+# Each plugin is specified in a TOML table (equivalent to a Python dictionary). The name
+# of the plugin is specified under the name key. All other key/value pairs give the
+# parameters for that plugin.
+
+
+# The simulation controller, defining the type of simulation we want to perform. In this
+# case, a simple simulation with only point targets.
+[simulation]
+name = "points"
+result_filename = "simple_points.zarr" # Intermediate results, will be converted later.
+targets_per_chunk = 500
+sample_rate = 30e3
+baseband_frequency = 110e3
+
+
+# The Dask cluster we want to use to do the calculations. Here we use an ad-hoc cluster
+# running on the local computer with 8 workers allowed to use a total of 40% of the
+# system memory (the memory limit is best-effort, not strictly enforced). By default,
+# the Dask dashboard is not started, so we have to explicitly state an address it will
+# listen on -- in this case port 8787 on the local computer, i.e., http://127.0.0.1:8787
+[cluster]
+name = "local"
+workers = 8
+total_memory = 0.4
+dashboard_address = ":8787"
+
+
+# The transmitter to use. The coordinate system is x forwards, y starboard and z down.
+# The orientation is a quaternion defining how to rotate the transducer from its
+# original pose of pointing along the x axis. The value here results in it pointing to
+# starboard and 15 degrees below horizontal.
+[transmitter]
+name = "generic"
+position = [0, 1.2, 0.3]
+orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
+
+# The beampattern of the transmitter. This is a multiplicative scale factor pluign. To
+# disable beampattern effects, you could omit this section. You could also apply it in
+# the general scale factors section as we do with the receiver beampatterns.
+[transmitter.beampattern]
+name = "rectangular_beampattern"
+width = 0.015
+height = 0.03
+transmit = true
+receive = false
+frequency = "centre"  # only calculate the scale factor at the centre frequency
+
+
+# The signal transmitter by the system.
+[signal]
+name = "lfm_chirp"
+f_start = 100e3
+f_stop = 120e3
+duration = 0.015
+rms_spl = 190
+
+# This is an inline table. We could also put this into a full table [signal.window]
+# similar to what we did with the transmitter beampattern.
+window = {name="tukey", alpha=0.2}
+
+
+# The receivers are an array (list, in Python terms) of tables defining transducers. The
+# double square brackets around the header is TOML notation for an array of tables. The
+# results will match the order the transducers are defined in, i.e., channel 0 of the
+# results will correspond to the first receiver in this file and so on.
+#
+# Here we use a 5-element receiver array positioned above the transmitter (remember z is
+# down) and with the same orientation.
+#
+# Each of these could have a beampattern associated with it directly. You could add an
+# inline table
+#
+#    beampattern = {name="rectangular_beampattern", width=...}
+#
+# to each receiver table, or you could add a [receivers.beampattern] table (note the
+# single brackets for it) after each [[receivers]] table (TOML will assosciate a
+# sub-table like this with the most recently defined table in the array).
+#
+# For our purposes, we want the same beampattern for each receiver, so we configure it
+# as a scale factor later.
+
+[[receivers]]
+name = "generic"
+position = [-0.1, 1.2, 0.0]
+orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
+
+[[receivers]]
+name = "generic"
+position = [-0.05, 1.2, 0.0]
+orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
+
+[[receivers]]
+name = "generic"
+position = [0, 1.2, 0.0]
+orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
+
+[[receivers]]
+name = "generic"
+position = [0.05, 1.2, 0.0]
+orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
+
+[[receivers]]
+name = "generic"
+position = [0.1, 1.2, 0.0]
+orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
+
+
+# The trajectory followed by the system. A simple linear trajectory is sufficient for
+# our needs.
+[trajectory]
+name = "linear"
+start_position = [0, 0, 0]
+end_position = [10, 0, 0]
+speed = 1.5
+
+
+# We need to define when the sonar will emit a ping. Here, we say it will ping every
+# 0.2s, starting at the start of the trajectory and with the final ping being at least
+# 0.5s before the end of the trajectory.
+[ping_times]
+name = "constant_interval"
+interval = 0.2
+start_delay = 0
+end_delay = 0.5
+
+
+# The environment we are operating in. For simplicity, we use an invariant (constant)
+# environment with fixed values.
+[environment]
+name = "invariant"
+salinity = 14.5
+sound_speed = 1480
+temperature = 11.2
+
+
+# The targets we want to simulate. Like with the receivers, this is an array of tables.
+
+# First, a rectangle with points randomly scattered within it to achieve a desired
+# density. Remember that z is down, so a normal with a negative z component means the
+# normal is pointing up. The reflectivity is the fraction of the incident amplitude that
+# is reflected back to the sonar.
+[[targets]]
+name = "random_point_rectangle"
+seed = 10671
+Dx = 5
+Dy = 120
+centre = [5, 75, 10]
+normal = [0, 0, -1]
+point_density = 10
+reflectivity = 0.06
+
+# And secondly, a single target at a specific position with a much stronger echo.
+[[targets]]
+name = "single_point"
+position = [5, 40, 10]
+reflectivity = 10
+
+
+# How we want to compute the two-way travel times, i.e., the time it takes the acoustic
+# wave to reach a target and scatter back to a receiver. Here, we want to use the
+# stop-and-hop approximation to simplify the calculation.
+[travel_time]
+name = "stop_and_hop"
+
+
+
+# Various multiplicative scale factors can be applied to the acoustic waves. This is
+# also an array of plugins.
+
+# Geometric spreading losses. This plugin applies a factor of 1/r^{power} to both the
+# incident and scattered waves. Using a power of 1 corresponds to spherical spreading.
+[[scale_factors]]
+name = "geometric_spreading"
+power = 1
+
+# Estimate the energy loss due to acoustic attenuation. We decide to calculate this only
+# at the centre frequency rather than calculating a separate loss for each frequency in
+# the simulation.
+[[scale_factors]]
+name = "anslie_mccolm_attenuation"
+frequency = "centre"
+
+# And apply a beampattern factor corresponding to the receivers. Since we are using the
+# same size transducers for transmit and receive, we could also use this for the
+# transmit beampattern by setting transmit = true. For the purposes of the example, the
+# beampatterns were split to demonstrate how to set it within a transducer
+# specification.
+[[scale_factors]]
+name = "rectangular_beampattern"
+width = 0.015
+height = 0.03
+transmit = false
+receive = true
+frequency = "centre"
+
+
+# Finally, convert the intermediate results generated by the simulation controller to
+# our preferred format. In this case, a NumPy npz file is generated.
+[result_converter]
+name = "numpy"
+filename = "simple_points.npz"
+compress = false
+
+# If you prefer to use the results in MATLAB, you could comment out the NumPy converter
+# and use the following converter instead.
+# [result_converter]
+# name = "matlab"
+# filename = "simple_points.mat"

@@ -7,4 +7,4 @@
 # by Dask for the scheduler, and another will manage the simulation. The other six will
 # be used as workers. You will be able to access the Dask dashboard at
 # http://127.0.0.1:8787 while the simulation is running.
-mpirun -n 8 python example_sim.py mpi
+mpirun -n 8 python simulate.py mpi
