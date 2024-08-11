@@ -49,7 +49,7 @@ def workerfunc(i):
 
 
 # Initialise twice to ensure it handles this.
-c = DaskMPICluster()
+c = DaskMPICluster(separate_workers=False)
 c.initialise()
 c.initialise()
 

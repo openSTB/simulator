@@ -59,3 +59,22 @@ def run(config_plugin, config_source):
 
     # And then we can run the simulation.
     simulation.run(config)
+
+
+@click.command
+@click.argument("plugin", nargs=1, type=str)
+def dask_cluster_worker(plugin):
+    """Start a Dask cluster worker.
+
+    This is intended for cluster environments where each worker is run in an independent
+    process, such as clusters using MPI. It allows the cluster to pass relevant
+    information such as addresses to the workers.
+
+    The PLUGIN argument identifies the Dask cluster plugin for the environment. This can
+    be the name of a registered plugin, a 'ClassName:package.module' reference to a
+    class in an installed module, or a 'ClassName:path/to/file.py` reference to a class
+    in a Python file. Note that not all plugins will support this feature.
+
+    """
+    cls = loader.load_plugin_class("openstb.simulator.dask_cluster", plugin)
+    cls.initialise_worker()

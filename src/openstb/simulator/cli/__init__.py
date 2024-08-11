@@ -3,7 +3,7 @@
 
 import click
 
-from openstb.simulator.cli.run import run
+from openstb.simulator.cli.run import dask_cluster_worker, run
 
 
 @click.group(
@@ -14,4 +14,5 @@ def openstb_sim():
     pass
 
 
+openstb_sim.add_command(dask_cluster_worker)
 openstb_sim.add_command(run)

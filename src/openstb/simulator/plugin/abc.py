@@ -27,7 +27,11 @@ import numpy as np
 from numpy.typing import ArrayLike
 import quaternionic
 
+from openstb.i18n.support import domain_translator
 from openstb.simulator.types import SimulationConfig
+
+
+_ = domain_translator("openstb.simulator", plural=False)
 
 
 class Plugin(ABC):
@@ -119,6 +123,24 @@ class DaskCluster(Plugin):
 
         """
         pass
+
+    @classmethod
+    def initialise_worker(cls):
+        """Initialise a worker for this cluster.
+
+        This is intended for cluster environments where each worker runs in a separate
+        process, such as MPI, and some configuration or connection parameters need to be
+        passed to workers. If used, the main simulation controller should read the
+        configuration and proceed as normal, and all other processes should run this
+        classmethod.
+
+        It is not required for plugins to implement this method if it is not appropriate
+        for their environment.
+
+        """
+        raise NotImplementedError(
+            _("this cluster does not support separate worker initialisation")
+        )
 
     @property
     @abstractmethod
