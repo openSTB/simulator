@@ -126,6 +126,7 @@ class DaskMPICluster(DaskCluster):
         interface: str | None = None,
         dashboard_address: str | None = None,
         separate_workers: bool = True,
+        local_directory: str | None = None,
     ):
         """
         Parameters
@@ -144,6 +145,10 @@ class DaskMPICluster(DaskCluster):
             configuration and proceed as normal. Setting this to True is recommended so
             that only the main controller process will have to read and parse the
             configuration.
+        local_directory : str, optional
+            The path to a local scratch directory for Dask to use. This should be local
+            to each node, not on a network drive. If not given, Dask will fall back to
+            an internal default path.
 
         """
         # Check now that MPI is available on each worker.
@@ -159,6 +164,7 @@ class DaskMPICluster(DaskCluster):
         self._initialised = False
         self._client: distributed.Client | None = None
         self.separate_workers = separate_workers
+        self.local_directory = local_directory
 
     def initialise(self):
         if self._initialised:
@@ -172,6 +178,7 @@ class DaskMPICluster(DaskCluster):
             interface=self.interface,
             dashboard=self.dashboard_address is not None,
             dashboard_address=self.dashboard_address or "",
+            local_directory=self.local_directory,
         )
 
         if self.separate_workers:
