@@ -211,18 +211,14 @@ class DaskMPICluster(DaskCluster):
         # Avoid misconfigurations with a clear error message.
         rank = comm.Get_rank()
         if rank == 1:
-            raise RuntimeError(
-                _(
-                    "when using separate workers, the simulation controller should be "
-                    "run on rank 1"
-                )
-            )
+            return True
 
         # The controller will broadcast the settings when available (after the
         # configuration has been loaded and parsed, and the main DaskCluster plugin is
         # initialised).
         settings = comm.bcast(None, root=1)
         dask_mpi.initialize(**settings)
+        return False
 
     @property
     def client(self) -> distributed.Client:

@@ -125,17 +125,23 @@ class DaskCluster(Plugin):
         pass
 
     @classmethod
-    def initialise_worker(cls):
+    def initialise_worker(cls) -> bool:
         """Initialise a worker for this cluster.
 
         This is intended for cluster environments where each worker runs in a separate
         process, such as MPI, and some configuration or connection parameters need to be
-        passed to workers. If used, the main simulation controller should read the
-        configuration and proceed as normal, and all other processes should run this
-        classmethod.
+        passed to workers. This class method should arrange for this to happen, and for
+        the worker processes to join the cluster.
 
         It is not required for plugins to implement this method if it is not appropriate
         for their environment.
+
+        Returns
+        -------
+        boolean
+            If True, the caller is the main simulation controller process and should
+            proceed with the simulation on return. If False, the caller was a worker
+            process and should exit on return.
 
         """
         raise NotImplementedError(
