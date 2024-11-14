@@ -28,7 +28,7 @@ baseband_frequency = 110e3
 # system memory (the memory limit is best-effort, not strictly enforced). By default,
 # the Dask dashboard is not started, so we have to explicitly state an address it will
 # listen on -- in this case port 8787 on the local computer, i.e., http://127.0.0.1:8787
-[cluster]
+[dask_cluster]
 name = "local"
 workers = 8
 total_memory = 0.4

@@ -39,7 +39,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
     if cluster == "local":
         # Create a cluster on the local machine with 8 workers able to use up to ~40% of
         # the total memory (note that the memory is enforced on a best-effort basis).
-        config["cluster"] = loader.dask_cluster(
+        config["dask_cluster"] = loader.dask_cluster(
             {
                 "name": "local",
                 "parameters": {
@@ -52,7 +52,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
 
     elif cluster == "mpi":
         # Cluster is managed by MPI.
-        config["cluster"] = loader.dask_cluster(
+        config["dask_cluster"] = loader.dask_cluster(
             {
                 "name": "mpi",
                 "parameters": {
@@ -71,7 +71,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
     # parse the configuration (including reading data off the disk, generating the
     # targets etc). For a local cluster, this function will not be reached by the
     # workers, but it does no harm to initialise the cluster here.
-    config["cluster"].initialise()
+    config["dask_cluster"].initialise()
 
     # Use a 10m linear trajectory along the x axis at 1.5m/s.
     config["trajectory"] = loader.trajectory(

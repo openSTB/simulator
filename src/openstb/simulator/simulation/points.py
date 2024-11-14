@@ -23,7 +23,7 @@ class PointSimulationConfig(TypedDict):
     """Specification for the PointSimulator configuration dictionary."""
 
     # Dask cluster to run the simulation on.
-    cluster: abc.DaskCluster
+    dask_cluster: abc.DaskCluster
 
     #: Plugin which will calculate ping start times.
     ping_times: abc.PingTimes
@@ -143,8 +143,8 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
     def run(self, config: PointSimulationConfig):
         flatten_system(cast(MutableMapping[str, Any], config))
 
-        config["cluster"].initialise()
-        client = config["cluster"].client
+        config["dask_cluster"].initialise()
+        client = config["dask_cluster"].client
 
         # Determine the number of receivers being simulated.
         Nr = len(config["receivers"])
