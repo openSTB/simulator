@@ -53,6 +53,7 @@ mpi = "openstb.simulator.cluster:DaskMPICluster"
 
 [project.entry-points."openstb.simulator.distortion"]
 anslie_mccolm_attenuation = "openstb.simulator.distortion.environmental:AnslieMcColmAttenuation"
+doppler = "openstb.simulator.distortion.doppler:DopplerDistortion"
 geometric_spreading = "openstb.simulator.distortion.environmental:GeometricSpreading"
 rectangular_beampattern = "openstb.simulator.distortion.beampattern:RectangularBeampattern"
 
