@@ -61,26 +61,49 @@ class PointSimulationConfig(TypedDict):
 
 @dataclass(slots=True, eq=False, order=False)
 class _ChunkCommon:
+    """Container for simulation settings that are common to all chunks."""
+
+    # Simulation frequencies (passband).
     f: np.ndarray
+
+    # Spectrum of the transmitted signal (baseband).
     S: np.ndarray
-    baseband_frequency: float
-    travel_time: abc.TravelTime
-    trajectory: abc.Trajectory
-    environment: abc.Environment
-    tx_position: np.ndarray
-    tx_ori: np.ndarray
-    distortion: list[abc.Distortion]
+
+    # Frequency bounds of the transmitted signal (passband).
     signal_frequency_bounds: tuple[float, float]
 
+    # Frequency used for basebanding.
+    baseband_frequency: float
 
-def _pointsim_chunk(
+    # Travel time calculator.
+    travel_time: abc.TravelTime
+
+    # Trajectory followed by the system.
+    trajectory: abc.Trajectory
+
+    # Environment details.
+    environment: abc.Environment
+
+    # Position of the transmitter in the system.
+    tx_position: np.ndarray
+
+    # Orientation of the transmitter in the system.
+    tx_ori: np.ndarray
+
+    # Distortion of the signal.
+    distortion: list[abc.Distortion]
+
+
+def _point_simulation_chunk(
     common: _ChunkCommon,
     targets: np.ndarray,
     ping_time: float,
     rx_position: np.ndarray,
     rx_ori: np.ndarray,
     rx_distortion: list[abc.Distortion],
-):
+) -> np.ndarray:
+    """Simulation of a chunk of receivers and/or targets."""
+    # Calculate the travel times.
     tt_result = common.travel_time.calculate(
         common.trajectory,
         ping_time,
@@ -92,7 +115,10 @@ def _pointsim_chunk(
         targets[:, :3],
     )
 
+    # Start with the transmitted spectrum.
     Schunk = common.S[np.newaxis, :, np.newaxis]
+
+    # Distort.
     for distortion in common.distortion:
         Schunk = distortion.apply(
             ping_time,
@@ -104,10 +130,15 @@ def _pointsim_chunk(
             tt_result,
         )
 
+    # Apply the phase shift corresponding to each travel time.
     Schunk = Schunk * np.exp(
         -2j * np.pi * common.f[:, np.newaxis] * tt_result.travel_time[:, np.newaxis, :]
     )
+
+    # Scale by the reflectivity of the target.
     Schunk *= targets[:, 3]
+
+    # Apply each receive distortion.
     for distortion in rx_distortion:
         Schunk = distortion.apply(
             ping_time,
@@ -119,7 +150,45 @@ def _pointsim_chunk(
             tt_result,
         )
 
+    # Sum over the targets.
     return Schunk.sum(axis=-1).squeeze()
+
+
+def _point_simulation_store(
+    result_fdomain: np.ndarray,
+    storage: zarr.Array,
+    ping: int,
+    receiver: int | slice,
+    update: bool = False,
+) -> None:
+    """Store the result of a piece of the simulation.
+
+    Parameters
+    ----------
+    result_fdomain : numpy.ndarray
+        The Fourier domain result of the simulation.
+    storage : zarr.Array
+        The zarr array to store the result in.
+    ping : int
+        The ping index of the result.
+    receiver : int, slice
+        The receiver index or indices of the result.
+    update : Boolean
+        If True, add the result to the existing value; this will use a lock to prevent
+        race issues. If False, assume only one result per index and just store it. In
+        the latter case, it is also assumed that the chunk size of the storage matches
+        the chunk size of the simulation so it is safe for multiple chunks to be
+        simultaneously written.
+
+    """
+    # Return to the time domain.
+    result = np.fft.ifft(np.fft.ifftshift(result_fdomain))
+
+    if update:
+        with distributed.Lock("write-pressure"):
+            storage[ping, receiver, :] += result
+    else:
+        storage[ping, receiver, :] = result
 
 
 class PointSimulation(abc.Simulation[PointSimulationConfig]):
@@ -240,29 +309,36 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
             raise ValueError(_("specified output path already exists"))
         store = zarr.DirectoryStore(self.result_filename)
         storage = zarr.group(store=store)
-        storage.create_dataset(
+
+        # Use a default value of zero for the pressure. This does not write zero to the
+        # chunks, but sets it as a default if accessed (e.g., to add a result).
+        pressure = storage.zeros(
             "pressure", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
         )
-        storage.create_dataset("sample_time", shape=(Ns,), chunks=(Ns,), dtype="f8")
+
+        # Add the sample time and ping times.
+        storage.empty("sample_time", shape=(Ns,), chunks=(Ns,), dtype="f8")
         storage["sample_time"][:] = t
-        storage.create_dataset("ping_start_time", shape=(Np,), chunks=(Np,), dtype="f8")
+        storage.empty("ping_start_time", shape=(Np,), chunks=(Np,), dtype="f8")
         storage["ping_start_time"][:] = ping_start
+
+        # Add some metadata.
         storage.attrs.baseband_frequency = self.baseband_frequency
         storage.attrs.fill_value = self.fill_value
         storage.attrs.sample_rate = self.sample_rate
 
-        for p in range(Np):
-            for r in range(Nr):
+        for ping in range(Np):
+            for receiver in range(Nr):
                 # Simulate each chunk of targets.
                 chunk_futures = [
                     client.submit(
-                        _pointsim_chunk,
+                        _point_simulation_chunk,
                         common,
                         targets=chunk,
-                        ping_time=ping_start[p],
-                        rx_position=config["receivers"][r].position,
-                        rx_ori=config["receivers"][r].orientation.ndarray,
-                        rx_distortion=config["receivers"][r].distortion,
+                        ping_time=ping_start[ping],
+                        rx_position=config["receivers"][receiver].position,
+                        rx_ori=config["receivers"][receiver].orientation.ndarray,
+                        rx_distortion=config["receivers"][receiver].distortion,
                     )
                     for chunk in chunks
                 ]
@@ -283,17 +359,13 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
                     chunk_futures = new_futures
                     del new_futures
 
-                # The final sum is the only future left. Take the inverse FFT.
-                ping_result = client.submit(
-                    np.fft.ifft,
-                    client.submit(np.fft.ifftshift, chunk_futures[0]),
+                # Then store the result.
+                finish = client.submit(
+                    _point_simulation_store, chunk_futures[0], pressure, ping, receiver
                 )
                 del chunk_futures
-
-                # Wait until the result is available and store.
-                distributed.wait(ping_result)
-                storage["pressure"][p, r, :] = ping_result.result()
-                del ping_result
+                distributed.wait(finish)
+                del finish
 
         # Remove references to the data we scattered at the start. Although this
         # will go out of scope when we exit the context manager, the cluster may not
