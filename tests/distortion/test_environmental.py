@@ -5,9 +5,9 @@ import numpy as np
 import pytest
 import quaternionic
 
+from openstb.simulator.distortion import environmental
 from openstb.simulator.environment import InvariantEnvironment
 from openstb.simulator.plugin.abc import TravelTimeResult
-from openstb.simulator.scale_factor import environmental
 
 
 @pytest.mark.parametrize("power,N_rx,N_tgt", [(1, 4, 11), (2, 1, 1), (0.5, 1, 25)])
@@ -39,7 +39,7 @@ def test_scalefactor_environmental_geospreading(power, N_rx, N_tgt):
     )
 
     gs = environmental.GeometricSpreading(power)
-    sf = gs.calculate(0, 100e3, env, (80e3, 120e3), tt_result)
+    sf = gs.apply(0, 100e3, 1.0, 0, env, (80e3, 120e3), tt_result)
 
     # Should have shape (N_receiver, N_frequencies, N_targets). Since our factor has no
     # frequency dependency, we set the frequency axis to length 1.
@@ -64,9 +64,7 @@ def test_scalefactor_environmental_geospreading(power, N_rx, N_tgt):
         (4, 8, 7.9, 0.01, 77.2, 7.23171795),
     ],
 )
-def test_scalefactor_environmental_ansliemccolm_precalc(
-    freqmode, T, S, pH, z, f, alpha
-):
+def test_scalefactor_environmental_ansliemccolm(freqmode, T, S, pH, z, f, alpha):
     """scale_factor.environmental: Anslie-McColm attenuation factor"""
     # Convert values from Anslie-McColm paper units to our units.
     z = z * 1000
@@ -112,7 +110,7 @@ def test_scalefactor_environmental_ansliemccolm_precalc(
         bounds = (f - 10e3, f + 10e3)
         f_sim = np.full(255, f)
 
-    sf = atten.calculate(0, f_sim, env, bounds, tt_result)
+    sf = atten.apply(0, f_sim, 1.0, 0, env, bounds, tt_result)
 
     # Should have shape (N_receiver, N_frequencies, N_targets). In the single-frequency
     # modes, we set the frequency axis to length 1.

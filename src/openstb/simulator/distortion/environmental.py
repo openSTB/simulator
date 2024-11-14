@@ -2,15 +2,16 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator.plugin.abc import Environment, ScaleFactor, TravelTimeResult
+from openstb.simulator.plugin.abc import Distortion, Environment, TravelTimeResult
 
 
 _ = domain_translator("openstb.simulator", plural=False)
 
 
-class AnslieMcColmAttenuation(ScaleFactor):
+class AnslieMcColmAttenuation(Distortion):
     r"""Attenuation of acoustic energy using the simplified Anslie-McColm model.
 
     The model presented by Anslie and McColm [1]_ models the attenuation due to the
@@ -87,10 +88,12 @@ class AnslieMcColmAttenuation(ScaleFactor):
 
         self.ph = pH
 
-    def calculate(
+    def apply(
         self,
         ping_time: float,
-        f: np.ndarray,
+        f: ArrayLike,
+        S: ArrayLike,
+        baseband_frequency: float,
         environment: Environment,
         signal_frequency_bounds: tuple[float, float],
         tt_result: TravelTimeResult,
@@ -106,7 +109,7 @@ class AnslieMcColmAttenuation(ScaleFactor):
                 (signal_frequency_bounds[0] + signal_frequency_bounds[1]) / 2000.0
             ).reshape(1, 1, 1)
         else:
-            fk = (f / 1000.0)[np.newaxis, :, np.newaxis]
+            fk = (np.array(f) / 1000.0)[np.newaxis, :, np.newaxis]
 
         # And depth in kilometres.
         depth = tt_result.tx_position[2] / 1000.0
@@ -138,11 +141,11 @@ class AnslieMcColmAttenuation(ScaleFactor):
         atten_db = total * r[:, np.newaxis, :] / 1000
 
         # And convert back to amplitude.
-        return 10 ** (-atten_db / 20)
+        return np.array(S) * 10 ** (-atten_db / 20)
 
 
-class GeometricSpreading(ScaleFactor):
-    """Scale factor due to geometric spreading of the signal."""
+class GeometricSpreading(Distortion):
+    """Amplitude distortion due to geometric spreading of the signal."""
 
     def __init__(self, power: float):
         """
@@ -150,21 +153,23 @@ class GeometricSpreading(ScaleFactor):
         ----------
         power : float
             The power to use when calculating a one-way spreading loss a = 1/r^power.
-            Remember this is applied to the amplitude, so a power of 1 corresponds to
-            spherical spreading (1/r in amplitude, 1/r^2 in intensity) and a power of
-            0.5 corresponds to cylindrical spreading.
+            This is applied to the amplitude, so a power of 1 corresponds to spherical
+            spreading (1/r in amplitude, 1/r^2 in intensity) and a power of 0.5
+            corresponds to cylindrical spreading.
 
         """
         self.power = power
 
-    def calculate(
+    def apply(
         self,
         ping_time: float,
-        f: np.ndarray,
+        f: ArrayLike,
+        S: ArrayLike,
+        baseband_frequency: float,
         environment: Environment,
         signal_frequency_bounds: tuple[float, float],
         tt_result: TravelTimeResult,
     ) -> np.ndarray:
         txscale = 1 / (tt_result.tx_path_length**self.power)
         rxscale = 1 / (tt_result.rx_path_length**self.power)
-        return (txscale * rxscale)[:, np.newaxis, :]
+        return np.array(S) * (txscale * rxscale)[:, np.newaxis, :]

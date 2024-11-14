@@ -2,16 +2,17 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator.plugin.abc import Environment, ScaleFactor, TravelTimeResult
+from openstb.simulator.plugin.abc import Distortion, Environment, TravelTimeResult
 from openstb.simulator.util import rotate_elementwise
 
 
 _ = domain_translator("openstb.simulator", plural=False)
 
 
-class RectangularBeampattern(ScaleFactor):
+class RectangularBeampattern(Distortion):
     """Scaling due to the beampattern of an ideal rectangular aperture."""
 
     def __init__(
@@ -77,18 +78,19 @@ class RectangularBeampattern(ScaleFactor):
         if not self.horizontal and not self.vertical:
             raise ValueError(_("at least one of horizontal and vertical must be true"))
 
-    def calculate(
+    def apply(
         self,
         ping_time: float,
-        f: np.ndarray,
+        f: ArrayLike,
+        S: ArrayLike,
+        baseband_frequency: float,
         environment: Environment,
         signal_frequency_bounds: tuple[float, float],
         tt_result: TravelTimeResult,
     ) -> np.ndarray:
+
         # Use the sound speed at transmit.
         sound_speed = environment.sound_speed(ping_time, tt_result.tx_position)
-
-        # Expand to the three dimensions we need in the output.
         sound_speed = np.array(sound_speed).reshape(1, 1, 1)
 
         # Generate a wavelength array depending on the frequency mode.
@@ -103,37 +105,33 @@ class RectangularBeampattern(ScaleFactor):
             wl = sound_speed / (np.sum(signal_frequency_bounds) / 2)
         else:
             # All frequencies being sampled.
-            wl = sound_speed / f[np.newaxis, :, np.newaxis]
+            wl = sound_speed / np.array(f)[np.newaxis, :, np.newaxis]
 
         # In the following, we rotate the vectors back into the transducer coordinate
         # system (so x is the transducer normal). In the case of the receiver, we also
         # negate the components: the vector points into the transducer in this case, and
         # we want it to point away from it.
 
-        # Evaluate for the receivers.
+        distorted = np.array(S)
+
+        # Evaluate for the transmitter.
+        if self.transmit:
+            tx_vector = rotate_elementwise(
+                ~tt_result.tx_orientation,
+                tt_result.tx_vector[np.newaxis, np.newaxis, :],
+            )
+            distorted = distorted * self._eval(wl, tx_vector)
+
+        # And for the receivers.
         if self.receive:
             rx_vector = rotate_elementwise(
                 ~tt_result.rx_orientation, -tt_result.rx_vector[:, np.newaxis, ...]
             )
-            result = self._eval(wl, rx_vector)
+            distorted = distorted * self._eval(wl, rx_vector)
 
-            # And maybe also for the transmitter.
-            if self.transmit:
-                tx_vector = rotate_elementwise(
-                    ~tt_result.tx_orientation,
-                    tt_result.tx_vector[np.newaxis, np.newaxis, :],
-                )
-                result *= self._eval(wl, tx_vector)
+        return distorted
 
-            return result
-
-        # Only evaluate for the transmitter.
-        tx_vector = rotate_elementwise(
-            ~tt_result.tx_orientation, tt_result.tx_vector[np.newaxis, np.newaxis, :]
-        )
-        return self._eval(wl, tx_vector)
-
-    def _eval(self, wavelength, direction):
+    def _eval(self, wavelength: np.ndarray, direction: np.ndarray) -> np.ndarray:
         if self.horizontal and self.vertical:
             return np.sinc(self.width * direction[..., 1] / wavelength) * np.sinc(
                 self.height * direction[..., 2] / wavelength

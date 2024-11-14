@@ -5,9 +5,9 @@ import numpy as np
 import pytest
 import quaternionic
 
+from openstb.simulator.distortion import beampattern
 from openstb.simulator.environment import InvariantEnvironment
 from openstb.simulator.plugin.abc import TravelTimeResult
-from openstb.simulator.scale_factor import beampattern
 
 
 def test_scalefactor_beampattern_rect_error():
@@ -71,7 +71,9 @@ def test_scalefactor_beampattern_rect_horizontal(frequency, tx, rx):
         rx_path_length=np.full((1, N), 150.0),
     )
 
-    amp = bp.calculate(0, np.array([100e3, 200e3, 300e3]), env, (50e3, 60e3), tt_result)
+    amp = bp.apply(
+        0, np.array([100e3, 200e3, 300e3]), 1, 0, env, (50e3, 60e3), tt_result
+    )
 
     wavelength = (
         np.array(1500.0)
@@ -126,7 +128,9 @@ def test_scalefactor_beampattern_rect_vertical(frequency, tx, rx):
         rx_path_length=np.full((1, N), 150.0),
     )
 
-    amp = bp.calculate(0, np.array([100e3, 200e3, 300e3]), env, (50e3, 60e3), tt_result)
+    amp = bp.apply(
+        0, np.array([100e3, 200e3, 300e3]), 1, 0, env, (50e3, 60e3), tt_result
+    )
 
     wavelength = (
         np.array(1500.0)
@@ -171,7 +175,9 @@ def test_scalefactor_beampattern_rect_both():
         rx_path_length=np.full((1, N), 150.0),
     )
 
-    amp = bp.calculate(0, np.array([100e3, 200e3, 300e3]), env, (50e3, 60e3), tt_result)
+    amp = bp.apply(
+        0, np.array([100e3, 200e3, 300e3]), 1, 0, env, (50e3, 60e3), tt_result
+    )
 
     wavelength = np.array(1500.0 / 55e3)
     expected_az = np.sinc(0.01 * np.sin(angles) * np.cos(angles) / wavelength)

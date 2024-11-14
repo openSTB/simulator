@@ -150,10 +150,10 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
         }
     )
 
-    # Apply two scale factors: spherical spreading (1/r scaling to the amplitude on
+    # Apply two distortions: spherical spreading (1/r scaling to the amplitude on
     # each direction) and acoustic attenuation.
-    config["scale_factors"] = [
-        loader.scale_factor(
+    config["distortion"] = [
+        loader.distortion(
             {
                 "name": "geometric_spreading",
                 "parameters": {
@@ -161,7 +161,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
                 },
             }
         ),
-        loader.scale_factor(
+        loader.distortion(
             {
                 "name": "anslie_mccolm_attenuation",
                 "parameters": {
@@ -200,8 +200,9 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
     q_transducer = q_tilt * q_yaw
 
     # Define a common far-field beampattern for the transducers. Note that this is just
-    # a scale factor attached to the transducers; we could add this to the list of scale
-    # factors above and not pass it to the transducers to achieve the same result.
+    # a distortion attached to the transducers; we could add this to the list of
+    # distortion plugins above and not pass it to the transducers to achieve the same
+    # result.
     beampattern = {
         "name": "rectangular_beampattern",
         "parameters": {

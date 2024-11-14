@@ -44,9 +44,9 @@ name = "generic"
 position = [0, 1.2, 0.3]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-# The beampattern of the transmitter. This is a multiplicative scale factor pluign. To
-# disable beampattern effects, you could omit this section. You could also apply it in
-# the general scale factors section as we do with the receiver beampatterns.
+# The beampattern of the transmitter. This is a distortion plugin. To disable
+# beampattern effects, you could omit this section. You could also apply it in the
+# general scale factors section as we do with the receiver beampatterns.
 [transmitter.beampattern]
 name = "rectangular_beampattern"
 width = 0.015
@@ -56,7 +56,7 @@ receive = false
 frequency = "centre"  # only calculate the scale factor at the centre frequency
 
 
-# The signal transmitter by the system.
+# The signal transmitted by the system.
 [signal]
 name = "lfm_chirp"
 f_start = 100e3
@@ -87,7 +87,7 @@ window = {name="tukey", alpha=0.2}
 # sub-table like this with the most recently defined table in the array).
 #
 # For our purposes, we want the same beampattern for each receiver, so we configure it
-# as a scale factor later.
+# as a distortion later.
 
 [[receivers]]
 name = "generic"
@@ -174,19 +174,19 @@ name = "stop_and_hop"
 
 
 
-# Various multiplicative scale factors can be applied to the acoustic waves. This is
-# also an array of plugins.
+# Various distortions can be applied to the acoustic waves. This is also an array of
+# plugins.
 
 # Geometric spreading losses. This plugin applies a factor of 1/r^{power} to both the
 # incident and scattered waves. Using a power of 1 corresponds to spherical spreading.
-[[scale_factors]]
+[[distortion]]
 name = "geometric_spreading"
 power = 1
 
 # Estimate the energy loss due to acoustic attenuation. We decide to calculate this only
 # at the centre frequency rather than calculating a separate loss for each frequency in
 # the simulation.
-[[scale_factors]]
+[[distortion]]
 name = "anslie_mccolm_attenuation"
 frequency = "centre"
 
@@ -195,7 +195,7 @@ frequency = "centre"
 # transmit beampattern by setting transmit = true. For the purposes of the example, the
 # beampatterns were split to demonstrate how to set it within a transducer
 # specification.
-[[scale_factors]]
+[[distortion]]
 name = "rectangular_beampattern"
 width = 0.015
 height = 0.03

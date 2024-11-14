@@ -51,6 +51,11 @@ toml = "openstb.simulator.config_loader:TOMLLoader"
 local = "openstb.simulator.cluster:DaskLocalCluster"
 mpi = "openstb.simulator.cluster:DaskMPICluster"
 
+[project.entry-points."openstb.simulator.distortion"]
+anslie_mccolm_attenuation = "openstb.simulator.distortion.environmental:AnslieMcColmAttenuation"
+geometric_spreading = "openstb.simulator.distortion.environmental:GeometricSpreading"
+rectangular_beampattern = "openstb.simulator.distortion.beampattern:RectangularBeampattern"
+
 [project.entry-points."openstb.simulator.environment"]
 invariant = "openstb.simulator.environment:InvariantEnvironment"
 
@@ -65,11 +70,6 @@ single_point = "openstb.simulator.target.points:SinglePoint"
 [project.entry-points."openstb.simulator.result_converter"]
 matlab = "openstb.simulator.result_converter:MATLABConverter"
 numpy = "openstb.simulator.result_converter:NumpyConverter"
-
-[project.entry-points."openstb.simulator.scale_factor"]
-anslie_mccolm_attenuation = "openstb.simulator.scale_factor.environmental:AnslieMcColmAttenuation"
-geometric_spreading = "openstb.simulator.scale_factor.environmental:GeometricSpreading"
-rectangular_beampattern = "openstb.simulator.scale_factor.beampattern:RectangularBeampattern"
 
 [project.entry-points."openstb.simulator.signal"]
 lfm_chirp = "openstb.simulator.system.signal:LFMChirp"

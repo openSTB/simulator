@@ -52,8 +52,8 @@ class PointSimulationConfig(TypedDict):
     #: Plugin which will calculate the travel times to and from each target.
     travel_time: abc.TravelTime
 
-    #: Plugins which will calculate amplitude scale factors for each echo.
-    scale_factors: NotRequired[list[abc.ScaleFactor]]
+    #: Plugins which will apply distortions to each echo.
+    distortion: NotRequired[list[abc.Distortion]]
 
     #: Plugin to convert the output into a desired format.
     result_converter: NotRequired[abc.ResultConverter]
@@ -63,12 +63,13 @@ class PointSimulationConfig(TypedDict):
 class _ChunkCommon:
     f: np.ndarray
     S: np.ndarray
+    baseband_frequency: float
     travel_time: abc.TravelTime
     trajectory: abc.Trajectory
     environment: abc.Environment
     tx_position: np.ndarray
     tx_ori: np.ndarray
-    scale_factors: list[abc.ScaleFactor]
+    distortion: list[abc.Distortion]
     signal_frequency_bounds: tuple[float, float]
 
 
@@ -78,7 +79,7 @@ def _pointsim_chunk(
     ping_time: float,
     rx_position: np.ndarray,
     rx_ori: np.ndarray,
-    rx_scale_factors: list[abc.ScaleFactor],
+    rx_distortion: list[abc.Distortion],
 ):
     tt_result = common.travel_time.calculate(
         common.trajectory,
@@ -91,14 +92,28 @@ def _pointsim_chunk(
         targets[:, :3],
     )
 
-    Schunk = common.S[:, np.newaxis] * np.exp(
+    Schunk = common.S[np.newaxis, :, np.newaxis]
+    for distortion in common.distortion:
+        Schunk = distortion.apply(
+            ping_time,
+            common.f,
+            Schunk,
+            common.baseband_frequency,
+            common.environment,
+            common.signal_frequency_bounds,
+            tt_result,
+        )
+
+    Schunk = Schunk * np.exp(
         -2j * np.pi * common.f[:, np.newaxis] * tt_result.travel_time[:, np.newaxis, :]
     )
     Schunk *= targets[:, 3]
-    for scale_factor in chain(common.scale_factors, rx_scale_factors):
-        Schunk *= scale_factor.calculate(
+    for distortion in rx_distortion:
+        Schunk = distortion.apply(
             ping_time,
             common.f,
+            Schunk,
+            common.baseband_frequency,
             common.environment,
             common.signal_frequency_bounds,
             tt_result,
@@ -202,17 +217,18 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         chunks = client.scatter(chunks, broadcast=False)
 
         # Collate and send common details to all workers.
-        scale_factors = config["transmitter"].scale_factors + config["scale_factors"]
+        distortion = config["transmitter"].distortion + config["distortion"]
         common = client.scatter(
             _ChunkCommon(
                 f=f + self.baseband_frequency,
                 S=S,
+                baseband_frequency=self.baseband_frequency,
                 travel_time=config["travel_time"],
                 trajectory=config["trajectory"],
                 tx_position=config["transmitter"].position,
                 tx_ori=config["transmitter"].orientation.ndarray,
                 environment=config["environment"],
-                scale_factors=scale_factors,
+                distortion=distortion,
                 signal_frequency_bounds=signal_frequency_bounds,
             ),
             broadcast=True,
@@ -246,7 +262,7 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
                         ping_time=ping_start[p],
                         rx_position=config["receivers"][r].position,
                         rx_ori=config["receivers"][r].orientation.ndarray,
-                        rx_scale_factors=config["receivers"][r].scale_factors,
+                        rx_distortion=config["receivers"][r].distortion,
                     )
                     for chunk in chunks
                 ]

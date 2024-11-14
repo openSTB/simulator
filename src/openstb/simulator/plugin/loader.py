@@ -275,6 +275,11 @@ def dask_cluster(plugin_spec: PluginOrSpec[abc.DaskCluster]) -> abc.DaskCluster:
     return load_plugin("openstb.simulator.dask_cluster", plugin_spec)
 
 
+@register_loader(name="echo signal distortion")
+def distortion(plugin_spec: PluginOrSpec[abc.Distortion]) -> abc.Distortion:
+    return load_plugin("openstb.simulator.distortion", plugin_spec)
+
+
 @register_loader(name="environmental parameters")
 def environment(plugin_spec: PluginOrSpec[abc.Environment]) -> abc.Environment:
     return load_plugin("openstb.simulator.environment", plugin_spec)
@@ -293,11 +298,6 @@ def point_targets(plugin_spec: PluginOrSpec[abc.PointTargets]) -> abc.PointTarge
 @register_loader(name="result converter")
 def result_converter(spec: PluginOrSpec[abc.ResultConverter]) -> abc.ResultConverter:
     return load_plugin("openstb.simulator.result_converter", spec)
-
-
-@register_loader(name="multiplicative scale factor")
-def scale_factor(plugin_spec: PluginOrSpec[abc.ScaleFactor]) -> abc.ScaleFactor:
-    return load_plugin("openstb.simulator.scale_factor", plugin_spec)
 
 
 @register_loader(name="signal")

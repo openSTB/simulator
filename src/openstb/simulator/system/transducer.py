@@ -6,8 +6,8 @@ from numpy.typing import ArrayLike
 import quaternionic
 
 from openstb.i18n.support import domain_translator
-from openstb.simulator.plugin.abc import ScaleFactor, Transducer
-from openstb.simulator.plugin.loader import scale_factor
+from openstb.simulator.plugin.abc import Distortion, Transducer
+from openstb.simulator.plugin.loader import distortion
 from openstb.simulator.types import PluginOrSpec
 
 
@@ -19,7 +19,7 @@ class GenericTransducer(Transducer):
         self,
         position: ArrayLike,
         orientation: ArrayLike | quaternionic.QArray,
-        beampattern: PluginOrSpec[ScaleFactor] | None = None,
+        beampattern: PluginOrSpec[Distortion] | None = None,
     ):
         self._position = np.array(position, dtype=float)
         if self._position.shape != (3,):
@@ -33,9 +33,9 @@ class GenericTransducer(Transducer):
             raise ValueError(_("transducer orientation must be a single quaternion"))
 
         if beampattern is None:
-            self._scale_factors = []
+            self._distortion = []
         else:
-            self._scale_factors = [scale_factor(beampattern)]
+            self._distortion = [distortion(beampattern)]
 
     @property
     def position(self) -> np.ndarray:
@@ -46,5 +46,5 @@ class GenericTransducer(Transducer):
         return self._orientation
 
     @property
-    def scale_factors(self) -> list[ScaleFactor]:
-        return self._scale_factors
+    def distortion(self) -> list[Distortion]:
+        return self._distortion
