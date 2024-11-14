@@ -29,7 +29,7 @@ MPI = ["dask-mpi", "mpi4py"]
 
 # Support for development and testing.
 tests = ["pytest", "pytest-cov"]
-dev = ["black", "flake8", "isort", "mypy", "openstb-simulator[tests]"]
+dev = ["black", "flake8", "flake8-pyproject", "isort", "mypy", "openstb-simulator[tests]"]
 
 
 #
