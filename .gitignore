@@ -14,7 +14,7 @@ src/openstb/locale
 .mypy_cache/
 
 # Test coverage reports.
-.coverage
+.coverage*
 tests/coverage
 
 # Scratch space which Dask may create during testing or running examples.
