@@ -48,8 +48,8 @@ openstb-sim = "openstb.simulator.cli:openstb_sim"
 toml = "openstb.simulator.config_loader:TOMLLoader"
 
 [project.entry-points."openstb.simulator.dask_cluster"]
-local = "openstb.simulator.cluster:DaskLocalCluster"
-mpi = "openstb.simulator.cluster:DaskMPICluster"
+local = "openstb.simulator.cluster.dask_local:DaskLocalCluster"
+mpi = "openstb.simulator.cluster.dask_mpi:DaskMPICluster"
 
 [project.entry-points."openstb.simulator.distortion"]
 anslie_mccolm_attenuation = "openstb.simulator.distortion.environmental:AnslieMcColmAttenuation"

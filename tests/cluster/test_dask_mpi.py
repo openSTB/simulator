@@ -8,15 +8,13 @@ import sys
 
 import pytest
 
-# We don't use this directly since the test code runs in a subprocess with mpirun, but
-# without it coverage.py can complain that the module being measured was never imported.
-from openstb.simulator.cluster import DaskMPICluster  # noqa: F401
-
 
 # mpi4py should be installed as a dependency of dask_mpi, but let's make sure since our
 # tests directly use mpi4py.
 pytest.importorskip("dask_mpi", reason="Need dask_mpi for DaskMPICluster")
 pytest.importorskip("mpi4py", reason="Need mpi4py for tests")
+
+from openstb.simulator.cluster.dask_mpi import DaskMPICluster  # noqa: E402
 
 
 # We also need some way of starting an MPI job.
@@ -27,7 +25,7 @@ except (FileNotFoundError, subprocess.CalledProcessError):
 
 
 @pytest.mark.cluster
-def test_cluster_mpi(tmp_path):
+def test_cluster_dask_mpi(tmp_path):
     # Generate a test script which will start the cluster, run some very simple tasks
     # and print the resulting sets of data.
     script_fn = tmp_path / "test_script.py"
@@ -41,7 +39,7 @@ if MPI.COMM_WORLD.Get_rank() == 1:
 
 
 from dask.distributed import wait
-from openstb.simulator.cluster import DaskMPICluster
+from openstb.simulator.cluster.dask_mpi import DaskMPICluster
 
 
 def workerfunc(i):
@@ -91,7 +89,7 @@ print(ranks)
     assert ranks == {2, 3}
 
 
-def test_cluster_mpi_error():
+def test_cluster_dask_mpi_error():
     """DaskMPICluster error handling"""
     c = DaskMPICluster()
     with pytest.raises(RuntimeError, match="must initialise.+before"):
