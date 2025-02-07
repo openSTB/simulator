@@ -107,8 +107,8 @@ linear = "openstb.simulator.system.trajectory:Linear"
 generic = "openstb.simulator.system.transducer:GenericTransducer"
 
 [project.entry-points."openstb.simulator.travel_time"]
-iterative = "openstb.simulator.travel_time:Iterative"
-stop_and_hop = "openstb.simulator.travel_time:StopAndHop"
+iterative = "openstb.simulator.travel_time.iterative:Iterative"
+stop_and_hop = "openstb.simulator.travel_time.stop_and_hop:StopAndHop"
 
 
 #
