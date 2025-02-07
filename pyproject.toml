@@ -69,8 +69,8 @@ random_point_rectangle = "openstb.simulator.target.points:RandomPointRect"
 single_point = "openstb.simulator.target.points:SinglePoint"
 
 [project.entry-points."openstb.simulator.result_converter"]
-matlab = "openstb.simulator.result_converter:MATLABConverter"
-numpy = "openstb.simulator.result_converter:NumpyConverter"
+matlab = "openstb.simulator.result_converter.matlab:MATLABConverter"
+numpy = "openstb.simulator.result_converter.numpy:NumpyConverter"
 
 [project.entry-points."openstb.simulator.signal"]
 lfm_chirp = "openstb.simulator.system.signal:LFMChirp"
