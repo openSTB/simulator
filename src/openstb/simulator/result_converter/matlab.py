@@ -10,7 +10,6 @@ import scipy.io
 from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin.abc import ResultConverter, ResultFormat, SimulationConfig
 
-
 _ = domain_translator("openstb.simulator", plural=False)
 
 

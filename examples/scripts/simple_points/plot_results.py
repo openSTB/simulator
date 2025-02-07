@@ -4,7 +4,6 @@
 from matplotlib import pyplot as plt
 import numpy as np
 
-
 # This assumes you used the NumPy output converter in example_sim.py.
 results = np.load("simple_points.npz")
 

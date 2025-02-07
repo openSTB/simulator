@@ -10,7 +10,6 @@ from openstb.simulator.plugin.abc import Distortion, Transducer
 from openstb.simulator.plugin.loader import distortion
 from openstb.simulator.types import PluginOrSpec
 
-
 _ = domain_translator("openstb.simulator", plural=False)
 
 

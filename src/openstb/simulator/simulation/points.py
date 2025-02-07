@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
 from dataclasses import dataclass
-from itertools import chain
 import os
 from pathlib import Path
 from typing import Any, MutableMapping, NotRequired, TypedDict, cast
@@ -14,7 +13,6 @@ import zarr
 from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin import abc
 from openstb.simulator.plugin.util import flatten_system
-
 
 _ = domain_translator("openstb.simulator", plural=False)
 

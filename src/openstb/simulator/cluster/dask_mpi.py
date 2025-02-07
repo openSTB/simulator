@@ -8,7 +8,6 @@ from mpi4py import MPI
 from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin.abc import DaskCluster
 
-
 _ = domain_translator("openstb.simulator", plural=False)
 
 

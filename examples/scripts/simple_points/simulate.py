@@ -10,7 +10,6 @@ import quaternionic
 from openstb.simulator.plugin import loader
 from openstb.simulator.simulation.points import PointSimulation, PointSimulationConfig
 
-
 # The local Dask cluster uses the multiprocessing module. This will import this
 # script at the start of each worker process. If the code to configure and start the
 # simulation is run during the import, this will lead to each worker trying to start

@@ -8,7 +8,6 @@ from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin.abc import Distortion, Environment, TravelTimeResult
 from openstb.simulator.util import rotate_elementwise
 
-
 _ = domain_translator("openstb.simulator", plural=False)
 
 
@@ -88,7 +87,6 @@ class RectangularBeampattern(Distortion):
         signal_frequency_bounds: tuple[float, float],
         tt_result: TravelTimeResult,
     ) -> np.ndarray:
-
         # Use the sound speed at transmit.
         sound_speed = environment.sound_speed(ping_time, tt_result.tx_position)
         sound_speed = np.array(sound_speed).reshape(1, 1, 1)

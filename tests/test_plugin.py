@@ -13,7 +13,6 @@ import pytest
 
 from openstb.simulator.plugin import loader
 
-
 # To test our plugin support, we don't want to rely on plugins being installed. In
 # particular, we don't want to have to install test plugins as they may have deliberate
 # errors designed to check certain pieces of code. Instead, we use a custom meta path

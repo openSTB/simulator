@@ -10,7 +10,6 @@ from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin import abc, loader
 from openstb.simulator.types import SimulationConfig
 
-
 _ = domain_translator("openstb.simulator")
 _n = domain_translator("openstb.simulator", plural=True)
 

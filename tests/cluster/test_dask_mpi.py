@@ -8,14 +8,12 @@ import sys
 
 import pytest
 
-
 # mpi4py should be installed as a dependency of dask_mpi, but let's make sure since our
 # tests directly use mpi4py.
 pytest.importorskip("dask_mpi", reason="Need dask_mpi for DaskMPICluster")
 pytest.importorskip("mpi4py", reason="Need mpi4py for tests")
 
 from openstb.simulator.cluster.dask_mpi import DaskMPICluster  # noqa: E402
-
 
 # We also need some way of starting an MPI job.
 try:

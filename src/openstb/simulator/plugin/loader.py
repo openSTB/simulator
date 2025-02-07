@@ -12,7 +12,6 @@ from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin import abc
 from openstb.simulator.types import F_PluginLoader, PluginOrSpec, T_Plugin
 
-
 _ = domain_translator("openstb.simulator")
 
 

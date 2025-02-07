@@ -45,7 +45,6 @@ class DopplerDistortion(Distortion):
         signal_frequency_bounds: tuple[float, float],
         tt_result: TravelTimeResult,
     ) -> np.ndarray:
-
         # Get the sound speeds.
         c_tx = environment.sound_speed(ping_time, tt_result.tx_position)
         if self.calculate_c_rx:

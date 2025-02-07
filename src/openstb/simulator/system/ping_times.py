@@ -9,7 +9,6 @@ from scipy.interpolate import PchipInterpolator
 from openstb.i18n.support import domain_translator
 from openstb.simulator.plugin.abc import PingTimes, Trajectory
 
-
 _ = domain_translator("openstb.simulator", plural=False)
 
 

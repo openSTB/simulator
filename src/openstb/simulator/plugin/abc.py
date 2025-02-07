@@ -30,7 +30,6 @@ import quaternionic
 from openstb.i18n.support import domain_translator
 from openstb.simulator.types import SimulationConfig
 
-
 _ = domain_translator("openstb.simulator", plural=False)
 
 

@@ -3,7 +3,6 @@
 
 import typing
 
-
 # The underlying array type of a quaternionic array is not fixed (it can be different
 # dtypes, or even other array classes like a SymPy array for symbolic quaternion
 # analysis). As such, the types are dynamically created. For static typing, we have a

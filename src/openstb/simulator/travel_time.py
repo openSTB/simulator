@@ -16,7 +16,6 @@ from openstb.simulator.plugin.abc import (
 )
 from openstb.simulator.util import rotate_elementwise
 
-
 _ = domain_translator("openstb.simulator", plural=False)
 
 
