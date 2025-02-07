@@ -19,7 +19,6 @@ class MATLABConverter(ResultConverter):
     This writes the data with the following variables:
 
     * ``baseband_frequency``: the frequency used to baseband the data
-    * ``fill_value``: value used to fill any missing samples in the results
     * ``ping_start_time``: seconds since the start of the trajectory that the pings
       were sent
     * ``pressure``: the simulated pressure at each receiver
@@ -72,8 +71,7 @@ class MATLABConverter(ResultConverter):
             "sample_time": result["sample_time"][:],
             "pressure": result["pressure"][:],
             "pressure_dimensions": ["ping", "channel", "sample_time"],
-            "baseband_frequency": result.attrs.baseband_frequency,
-            "fill_value": result.attrs.fill_value,
+            "baseband_frequency": result.attrs["baseband_frequency"],
         }
 
         scipy.io.savemat(

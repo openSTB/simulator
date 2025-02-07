@@ -4,6 +4,7 @@
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import shutil
 from typing import Any, MutableMapping, NotRequired, TypedDict, cast
 
 import distributed
@@ -197,7 +198,6 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         sample_rate: float,
         baseband_frequency: float,
         max_samples: int | None = None,
-        fill_value: complex | str = "nan",
     ):
         # Do not overwrite existing results.
         self.result_filename = Path(result_filename)
@@ -208,15 +208,6 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         self.sample_rate = sample_rate
         self.baseband_frequency = baseband_frequency
         self.max_samples = max_samples
-        if isinstance(fill_value, str):
-            if fill_value == "nan":
-                self.fill_value = np.nan + 0j
-            else:
-                raise ValueError(
-                    _("unsupported fill_value '{value}'").format(value=fill_value)
-                )
-        else:
-            self.fill_value = fill_value
 
     @property
     def config_class(self):
@@ -305,25 +296,26 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         # but check again in case the path has been created in the meantime.
         if self.result_filename.exists():
             raise ValueError(_("specified output path already exists"))
-        store = zarr.DirectoryStore(self.result_filename)
-        storage = zarr.group(store=store)
+        store = zarr.storage.LocalStore(self.result_filename)
+        storage = zarr.create_group(store=store)
 
         # Use a default value of zero for the pressure. This does not write zero to the
         # chunks, but sets it as a default if accessed (e.g., to add a result).
         pressure = storage.zeros(
-            "pressure", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
+            name="pressure", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
         )
 
         # Add the sample time and ping times.
-        storage.empty("sample_time", shape=(Ns,), chunks=(Ns,), dtype="f8")
-        storage["sample_time"][:] = t
-        storage.empty("ping_start_time", shape=(Np,), chunks=(Np,), dtype="f8")
-        storage["ping_start_time"][:] = ping_start
+        st = storage.empty(name="sample_time", shape=(Ns,), chunks=(Ns,), dtype="f8")
+        st[:] = t
+        pst = storage.empty(
+            name="ping_start_time", shape=(Np,), chunks=(Np,), dtype="f8"
+        )
+        pst[:] = ping_start
 
         # Add some metadata.
-        storage.attrs.baseband_frequency = self.baseband_frequency
-        storage.attrs.fill_value = self.fill_value
-        storage.attrs.sample_rate = self.sample_rate
+        storage.attrs["baseband_frequency"] = self.baseband_frequency
+        storage.attrs["sample_rate"] = self.sample_rate
 
         for ping in range(Np):
             for receiver in range(Nr):
@@ -377,5 +369,6 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
             success = config["result_converter"].convert(
                 abc.ResultFormat.ZARR_BASEBAND_PRESSURE, storage, config
             )
+            store.close()
             if success:
-                zarr.storage.rmdir(store)
+                shutil.rmtree(self.result_filename)

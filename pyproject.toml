@@ -19,7 +19,7 @@ dependencies = [
   "openstb-i18n",
   "quaternionic",
   "scipy",
-  "zarr>=2,<3",
+  "zarr>=3,<4",
 ]
 
 [project.optional-dependencies]
