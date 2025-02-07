@@ -8,7 +8,7 @@ import pytest
 import quaternionic
 
 from openstb.simulator import travel_time
-from openstb.simulator.environment import InvariantEnvironment
+from openstb.simulator.environment.invariant import InvariantEnvironment
 from openstb.simulator.plugin.abc import Trajectory
 from openstb.simulator.system.trajectory import Linear
 

@@ -55,7 +55,7 @@ openstb-sim = "openstb.simulator.cli:openstb_sim"
 #
 
 [project.entry-points."openstb.simulator.config_loader"]
-toml = "openstb.simulator.config_loader:TOMLLoader"
+toml = "openstb.simulator.config_loader.toml:TOMLLoader"
 
 [project.entry-points."openstb.simulator.dask_cluster"]
 local = "openstb.simulator.cluster.dask_local:DaskLocalCluster"
@@ -68,7 +68,7 @@ geometric_spreading = "openstb.simulator.distortion.environmental:GeometricSprea
 rectangular_beampattern = "openstb.simulator.distortion.beampattern:RectangularBeampattern"
 
 [project.entry-points."openstb.simulator.environment"]
-invariant = "openstb.simulator.environment:InvariantEnvironment"
+invariant = "openstb.simulator.environment.invariant:InvariantEnvironment"
 
 [project.entry-points."openstb.simulator.ping_times"]
 constant_distance = "openstb.simulator.system.ping_times:ConstantDistance"

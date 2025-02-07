@@ -6,7 +6,7 @@ import pytest
 import quaternionic
 
 from openstb.simulator.distortion import beampattern
-from openstb.simulator.environment import InvariantEnvironment
+from openstb.simulator.environment.invariant import InvariantEnvironment
 from openstb.simulator.plugin.abc import TravelTimeResult
 
 

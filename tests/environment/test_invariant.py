@@ -4,7 +4,7 @@
 import numpy as np
 import pytest
 
-from openstb.simulator import environment
+from openstb.simulator.environment.invariant import InvariantEnvironment
 
 
 def test_environment_invariant():
@@ -14,7 +14,7 @@ def test_environment_invariant():
         "sound_speed": 1488.5,
         "temperature": 11.7,
     }
-    env = environment.InvariantEnvironment(**values)
+    env = InvariantEnvironment(**values)
 
     for attr, expected in values.items():
         method = getattr(env, attr)
@@ -39,7 +39,7 @@ def test_environment_invariant():
 
 def test_environment_invariant_error():
     """environment: InvariantEnvironment error handling"""
-    env = environment.InvariantEnvironment(salinity=35, sound_speed=1490, temperature=8)
+    env = InvariantEnvironment(salinity=35, sound_speed=1490, temperature=8)
 
     with pytest.raises(ValueError, match="cannot be broadcast"):
         env.salinity([0, 60], [[0, 0, 0], [90, 0, 0], [180, 0, 0]])
