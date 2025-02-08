@@ -1,14 +1,17 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 import os
 from pathlib import Path
 import shutil
 from typing import Any, MutableMapping, NotRequired, TypedDict, cast
 
+from dask.tokenize import tokenize
 import distributed
 import numpy as np
+from numpy.typing import NDArray
 import zarr
 
 from openstb.i18n.support import domain_translator
@@ -59,7 +62,7 @@ class PointSimulationConfig(TypedDict):
 
 
 @dataclass(slots=True, eq=False, order=False)
-class _ChunkCommon:
+class CommonSettings:
     """Container for simulation settings that are common to all chunks."""
 
     # Simulation frequencies (passband).
@@ -94,7 +97,7 @@ class _ChunkCommon:
 
 
 def _point_simulation_chunk(
-    common: _ChunkCommon,
+    common: CommonSettings,
     targets: np.ndarray,
     ping_time: float,
     rx_position: np.ndarray,
@@ -191,6 +194,33 @@ def _point_simulation_store(
 
 
 class PointSimulation(abc.Simulation[PointSimulationConfig]):
+    """Simulation using idealised point targets.
+
+    The echo from each point target is summed to get the final result. Occlusions are
+    not modelled (the targets are infinitesimally small and so cannot cast shadows).
+    The scattering strength of each target is a fixed value independent of aspect. The
+    simulation is performed in the temporal frequency domain and the results are
+    basebanded.
+
+    The targets are divided into chunks and submitted to the cluster for simulation. To
+    combine the results from multiple chunks, a reduction tree is used. This sums the
+    results from a small number of chunks, allowing the initial results to be freed from
+    memory. Groups of these summed results are themselves recursively summed in the same
+    manner until a single combined result remains. For eight chunks and a reduction node
+    size of two, this means instead of computing the result as
+
+        result = r1 + r2 + r3 + r4 + r5 + r6 + f7 + r8
+
+    we compute it as
+
+        result = ((r1 + r2) + (r3 + r4)) + ((r5 + r6) + (r7 + r8))
+
+    which has the same number of operations but allows memory to be freed earlier. Note
+    that, since floating-point operations are generally not associative, these two
+    results will differ by some small amount proportional to the machine precision.
+
+    """
+
     def __init__(
         self,
         result_filename: os.PathLike[str] | str,
@@ -198,7 +228,33 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         sample_rate: float,
         baseband_frequency: float,
         max_samples: int | None = None,
+        task_threshold: float = 2.0,
+        reduction_node_size: int = 3,
     ):
+        """
+        Parameters
+        ----------
+        result_filename : path-like
+            Filename to store the results under. If this already exists, an exception
+            will be raised.
+        targets_per_chunk : int
+            The maximum number of targets to simulate in each chunk.
+        sample_rate : float
+            Sampling rate in Hertz of the results.
+        baseband_frequency : float
+            Frequency used for downconversion during basebanding (carrier frequency).
+        max_sample : int, optional
+            The maximum number of samples each receiver will capture per ping. If not
+            given, this is calculated from the maximum interval between pings and the
+            sampling rate.
+        task_threshold : float
+            Ensure that there are at least this many simulation tasks for each worker in
+            the scheduler. This does not include task to sum the results from different
+            chunks or to store the results.
+        reduction_node_size : int
+            How many
+
+        """
         # Do not overwrite existing results.
         self.result_filename = Path(result_filename)
         if self.result_filename.exists():
@@ -208,16 +264,67 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         self.sample_rate = sample_rate
         self.baseband_frequency = baseband_frequency
         self.max_samples = max_samples
+        self.task_threshold = task_threshold
+        self.reduction_node_size = reduction_node_size
 
     @property
     def config_class(self):
         return PointSimulationConfig
 
+    def _submit(
+        self,
+        client: distributed.Client,
+        config: PointSimulationConfig,
+        common: CommonSettings,
+        ping: int,
+        ping_time: float,
+        receiver: int,
+        targets: Sequence[distributed.Future | NDArray],
+        reduction_node_size: int,
+    ) -> tuple[list[distributed.Future], distributed.Future]:
+        sim_futures = [
+            client.submit(
+                _point_simulation_chunk,
+                common,
+                targets=chunk,
+                ping_time=ping_time,
+                rx_position=config["receivers"][receiver].position,
+                rx_ori=config["receivers"][receiver].orientation.ndarray,
+                rx_distortion=config["receivers"][receiver].distortion,
+            )
+            for chunk in targets
+        ]
+
+        # No reduction tree; sum all pieces at once.
+        if reduction_node_size <= 1:
+            key = f"result-sum-{tokenize(sim_futures)}"
+            summed = client.submit(np.sum, sim_futures, axis=0, key=key)
+            return sim_futures, summed
+
+        # Generate a sum reduction tree with each branch combining N chunks.
+        tree_futures = sim_futures
+        while len(tree_futures) > 1:
+            new_futures = []
+            for i in range(0, len(tree_futures), reduction_node_size):
+                tmp = tree_futures[i : i + reduction_node_size]
+                if len(tmp) == 1:
+                    new_futures.append(tmp[0])
+                else:
+                    key = f"reducing-sum-{tokenize(tmp)}"
+                    new_futures.append(client.submit(np.sum, tmp, axis=0, key=key))
+                del tmp
+            tree_futures = new_futures
+
+        return sim_futures, tree_futures[0]
+
     def run(self, config: PointSimulationConfig):
         flatten_system(cast(MutableMapping[str, Any], config))
 
-        config["dask_cluster"].initialise()
-        client = config["dask_cluster"].client
+        # Ensure any result converter will be able to work.
+        result_format = abc.ResultFormat.ZARR_BASEBAND_PRESSURE
+        if "result_converter" in config:
+            if not config["result_converter"].can_handle(result_format, config):
+                raise ValueError(_("output converter cannot handle results"))
 
         # Determine the number of receivers being simulated.
         Nr = len(config["receivers"])
@@ -247,12 +354,6 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         f = np.fft.fftshift(np.fft.fftfreq(Ns, 1 / self.sample_rate))
         S = np.fft.fftshift(np.fft.fft(s))
 
-        if "result_converter" in config:
-            if not config["result_converter"].can_handle(
-                abc.ResultFormat.ZARR_BASEBAND_PRESSURE, config
-            ):
-                raise ValueError(_("output converter cannot handle results"))
-
         # Prepare the targets.
         N_targets = 0
         for target in config["targets"]:
@@ -269,15 +370,19 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
             targets[start : start + len(target), 3] = target.reflectivity
             start += len(target)
 
+        # Prepare the cluster.
+        config["dask_cluster"].initialise()
+        client = config["dask_cluster"].client
+
         # Split the targets into chunks and distribute.
         N_chunks = int(np.ceil(N_targets / self.targets_per_chunk))
         chunks = np.array_split(targets, N_chunks)
         chunks = client.scatter(chunks, broadcast=False)
 
         # Collate and send common details to all workers.
-        distortion = config["transmitter"].distortion + config["distortion"]
+        distortion = config["transmitter"].distortion + config.get("distortion", [])
         common = client.scatter(
-            _ChunkCommon(
+            CommonSettings(
                 f=f + self.baseband_frequency,
                 S=S,
                 baseband_frequency=self.baseband_frequency,
@@ -296,8 +401,8 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         # but check again in case the path has been created in the meantime.
         if self.result_filename.exists():
             raise ValueError(_("specified output path already exists"))
-        store = zarr.storage.LocalStore(self.result_filename)
-        storage = zarr.create_group(store=store)
+        local_store = zarr.storage.LocalStore(self.result_filename)
+        storage = zarr.create_group(store=local_store)
 
         # Use a default value of zero for the pressure. This does not write zero to the
         # chunks, but sets it as a default if accessed (e.g., to add a result).
@@ -317,58 +422,70 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         storage.attrs["baseband_frequency"] = self.baseband_frequency
         storage.attrs["sample_rate"] = self.sample_rate
 
+        # Futures for simulation tasks that have not yet completed.
+        sim_futures: set[distributed.Future] = set()
+
+        # Futures for result store tasks that have not yet completed.
+        store_futures: set[distributed.Future] = set()
+
         for ping in range(Np):
             for receiver in range(Nr):
-                # Simulate each chunk of targets.
-                chunk_futures = [
-                    client.submit(
-                        _point_simulation_chunk,
-                        common,
-                        targets=chunk,
-                        ping_time=ping_start[ping],
-                        rx_position=config["receivers"][receiver].position,
-                        rx_ori=config["receivers"][receiver].orientation.ndarray,
-                        rx_distortion=config["receivers"][receiver].distortion,
-                    )
-                    for chunk in chunks
-                ]
+                # Number of simulation tasks we should aim for. We update this here in
+                # case workers are added to or removed from the cluster.
+                Nworkers = len(client.scheduler_info()["workers"])
+                threshold = Nworkers * self.task_threshold
 
-                # To avoid keeping all results in memory, generate a reduction tree
-                # which successively sums groups of intermediate results until we
-                # get a final result.
-                N_per_sum = 3
-                while len(chunk_futures) > 1:
-                    new_futures = []
-                    for i in range(0, len(chunk_futures), N_per_sum):
-                        tmp = chunk_futures[i : i + N_per_sum]
-                        if len(tmp) == 1:
-                            new_futures.append(tmp[0])
-                        else:
-                            new_futures.append(client.submit(np.sum, tmp, axis=0))
-                        del tmp
-                    chunk_futures = new_futures
-                    del new_futures
+                # Wait until the number of simulation futures are below this.
+                while len(sim_futures) > threshold:
+                    res = distributed.wait(sim_futures, return_when="FIRST_COMPLETED")
+                    sim_futures = set(res.not_done)
 
-                # Then store the result.
-                finish = client.submit(
-                    _point_simulation_store, chunk_futures[0], pressure, ping, receiver
+                    # Drop references to any store commands that have completed. This
+                    # allows the scheduler to remove them and the tasks that they
+                    # depended on.
+                    store_futures = {f for f in store_futures if not f.done()}
+
+                # Add simulation and reduction tasks for this ping-receiver pair.
+                sim, reduced = self._submit(
+                    client,
+                    config,
+                    common,
+                    ping,
+                    ping_start[ping],
+                    receiver,
+                    chunks,
+                    reduction_node_size=self.reduction_node_size,
                 )
-                del chunk_futures
-                distributed.wait(finish)
-                del finish
+                sim_futures.update(sim)
 
-        # Remove references to the data we scattered at the start. Although this
-        # will go out of scope when we exit the context manager, the cluster may not
-        # have processed this when the context manager exiting triggers a shutdown.
-        # The shutdown sees the data still on the workers and issues warnings about
-        # a loss of computed tasks.
+                # Add a task to store the reduced result.
+                store = client.submit(
+                    _point_simulation_store,
+                    reduced,
+                    pressure,
+                    ping,
+                    receiver,
+                    key=f"store-result-{ping}-{receiver}",
+                )
+                store_futures.add(store)
+
+                # We don't want to keep these references locally.
+                del reduced
+                del store
+
+        # Remove our references to the data and settings we scattered at the start. The
+        # scheduler can then remove them when no tasks using them remain.
         del chunks
         del common
+
+        # Tasks for all pings and receivers have been submitted. Wait until the results
+        # have been written to disk.
+        distributed.wait(store_futures)
 
         if "result_converter" in config:
             success = config["result_converter"].convert(
                 abc.ResultFormat.ZARR_BASEBAND_PRESSURE, storage, config
             )
-            store.close()
+            local_store.close()
             if success:
                 shutil.rmtree(self.result_filename)
