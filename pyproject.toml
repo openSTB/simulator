@@ -24,6 +24,11 @@ dependencies = [
 
 [project.optional-dependencies]
 
+# Dask diagnostic tools (dashboard)
+dask-diagnostics = [
+  "dask[diagnostics]",
+]
+
 # Support for different cluster environments.
 MPI = [
   "dask-mpi",
@@ -37,7 +42,7 @@ tests = [
 ]
 dev = [
   "mypy",
-  "openstb-simulator[tests]",
+  "openstb-simulator[dask-diagnostics,tests]",
   "ruff",
 ]
 
