@@ -103,6 +103,7 @@ def _point_simulation_chunk(
     rx_position: np.ndarray,
     rx_ori: np.ndarray,
     rx_distortion: list[abc.Distortion],
+    max_t: float,
 ) -> np.ndarray:
     """Simulation of a chunk of receivers and/or targets."""
     # Calculate the travel times.
@@ -136,6 +137,7 @@ def _point_simulation_chunk(
     Schunk = Schunk * np.exp(
         -2j * np.pi * common.f[:, np.newaxis] * tt_result.travel_time[:, np.newaxis, :]
     )
+    Schunk *= (tt_result.travel_time <= max_t)[:, np.newaxis, :]
 
     # Scale by the reflectivity of the target.
     Schunk *= targets[:, 3]
@@ -157,8 +159,9 @@ def _point_simulation_chunk(
 
 
 def _point_simulation_store(
-    result_fdomain: np.ndarray,
     storage: zarr.Array,
+    result_fdomain: np.ndarray,
+    guard_band_size: int,
     ping: int,
     receiver: int | slice,
     update: bool = False,
@@ -183,8 +186,8 @@ def _point_simulation_store(
         simultaneously written.
 
     """
-    # Return to the time domain.
-    result = np.fft.ifft(np.fft.ifftshift(result_fdomain))
+    # Return to the time domain and remove the guard band.
+    result = np.fft.ifft(np.fft.ifftshift(result_fdomain))[..., :-guard_band_size]
 
     if update:
         with distributed.Lock("write-pressure"):
@@ -279,6 +282,7 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         ping: int,
         ping_time: float,
         receiver: int,
+        max_t: float,
         targets: Sequence[distributed.Future | NDArray],
         reduction_node_size: int,
     ) -> tuple[list[distributed.Future], distributed.Future]:
@@ -291,6 +295,7 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
                 rx_position=config["receivers"][receiver].position,
                 rx_ori=config["receivers"][receiver].orientation.ndarray,
                 rx_distortion=config["receivers"][receiver].distortion,
+                max_t=max_t,
             )
             for chunk in targets
         ]
@@ -342,8 +347,12 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         else:
             Ns = self.max_samples
 
+        # Add a guard band. This means the echo of a target close to the end of the
+        # maximum range will not wrap round to the start of the trace.
+        gb_size = int(np.ceil(config["signal"].duration * 1.1 * self.sample_rate))
+
         # Calculate the corresponding sample times and evaluate the signal.
-        t = np.arange(Ns) / self.sample_rate
+        t = np.arange(Ns + gb_size) / self.sample_rate
         s = config["signal"].sample(t, self.baseband_frequency)
         signal_frequency_bounds = (
             config["signal"].minimum_frequency,
@@ -351,7 +360,7 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         )
 
         # The bulk of the simulation is carried out in the frequency domain.
-        f = np.fft.fftshift(np.fft.fftfreq(Ns, 1 / self.sample_rate))
+        f = np.fft.fftshift(np.fft.fftfreq(Ns + gb_size, 1 / self.sample_rate))
         S = np.fft.fftshift(np.fft.fft(s))
 
         # Prepare the targets.
@@ -453,6 +462,7 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
                     ping,
                     ping_start[ping],
                     receiver,
+                    Ns / self.sample_rate,
                     chunks,
                     reduction_node_size=self.reduction_node_size,
                 )
@@ -461,8 +471,9 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
                 # Add a task to store the reduced result.
                 store = client.submit(
                     _point_simulation_store,
-                    reduced,
                     pressure,
+                    reduced,
+                    gb_size,
                     ping,
                     receiver,
                     key=f"store-result-{ping}-{receiver}",
