@@ -5,10 +5,10 @@ import numpy as np
 from numpy.typing import ArrayLike
 import quaternionic
 
-from openstb.i18n.support import domain_translator
+from openstb.i18n.support import translations
 from openstb.simulator.plugin.abc import PointTargets
 
-_ = domain_translator("openstb.simulator", plural=False)
+_ = translations.load("openstb.simulator").gettext
 
 
 class RandomPointRect(PointTargets):

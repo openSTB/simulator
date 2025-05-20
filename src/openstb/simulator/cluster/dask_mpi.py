@@ -5,10 +5,10 @@ import dask_mpi
 import distributed
 from mpi4py import MPI
 
-from openstb.i18n.support import domain_translator
+from openstb.i18n.support import translations
 from openstb.simulator.plugin.abc import DaskCluster
 
-_ = domain_translator("openstb.simulator", plural=False)
+_ = translations.load("openstb.simulator").gettext
 
 
 class DaskMPICluster(DaskCluster):

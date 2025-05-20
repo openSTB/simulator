@@ -6,12 +6,13 @@ import inspect
 from typing import Any, List, Literal, NotRequired, cast, get_args, get_origin
 import warnings
 
-from openstb.i18n.support import domain_translator
+from openstb.i18n.support import translations
 from openstb.simulator.plugin import abc, loader
 from openstb.simulator.types import SimulationConfig
 
-_ = domain_translator("openstb.simulator")
-_n = domain_translator("openstb.simulator", plural=True)
+trans = translations.load("openstb.simulator")
+_ = trans.gettext
+_n = trans.ngettext
 
 
 def find_config_loader(

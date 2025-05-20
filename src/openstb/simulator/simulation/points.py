@@ -14,11 +14,11 @@ import numpy as np
 from numpy.typing import NDArray
 import zarr
 
-from openstb.i18n.support import domain_translator
+from openstb.i18n.support import translations
 from openstb.simulator.plugin import abc
 from openstb.simulator.plugin.util import flatten_system
 
-_ = domain_translator("openstb.simulator", plural=False)
+_ = translations.load("openstb.simulator").gettext
 
 
 class PointSimulationConfig(TypedDict):

@@ -7,10 +7,10 @@ from typing import Any
 
 import numpy as np
 
-from openstb.i18n.support import domain_translator
+from openstb.i18n.support import translations
 from openstb.simulator.plugin.abc import ResultConverter, ResultFormat, SimulationConfig
 
-_ = domain_translator("openstb.simulator", plural=False)
+_ = translations.load("openstb.simulator").gettext
 
 
 class NumpyConverter(ResultConverter):

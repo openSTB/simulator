@@ -5,11 +5,11 @@ import os
 from pathlib import Path
 import tomllib
 
-from openstb.i18n.support import domain_translator
+from openstb.i18n.support import translations
 from openstb.simulator.plugin.abc import ConfigLoader
 from openstb.simulator.types import PluginSpec
 
-_ = domain_translator("openstb.simulator", plural=False)
+_ = translations.load("openstb.simulator").gettext
 
 
 class TOMLLoader(ConfigLoader):
