@@ -3,12 +3,12 @@
 
 import logging
 from math import floor
-import socket
 
 from dask.distributed import wait
 import dask.system
 import distributed.system
 import pytest
+import requests
 
 from openstb.simulator.cluster.dask_local import DaskLocalCluster
 
@@ -53,33 +53,18 @@ def test_cluster_dask_local_dashboard(caplog):
     c.initialise()
 
     # Look through the logs to find the reported address.
-    d_addr = None
-    d_port = None
-    d_page = None
+    dashboard = None
     for record in caplog.records:
         if record.name != "distributed.scheduler":
             continue
         if "dashboard at:" in record.message:
-            _, _, url = record.message.partition("//")
-            d_addr, _, port_page = url.partition(":")
-            port, _, d_page = port_page.partition("/")
-            d_port = int(port)
-            break
+            _, dashboard = record.message.rsplit(" ", 1)
 
-    assert d_addr is not None, "dashboard address not reported"
-    assert d_port is not None, "dashboard port not reported"
-    assert d_page is not None, "dashboard page not reported"
+    assert dashboard is not None, "dashboard address not reported"
 
     # Attempt to access the status page.
-    sock = socket.socket()
-    sock.settimeout(1.0)
-    sock.connect((d_addr, d_port))
-    sock.send(f"GET /{d_page} HTTP/1.1\n\n".encode("ascii"))
-    response = sock.recv(15)
-    sock.close()
-    assert response == b"HTTP/1.1 200 OK", "could not access dashboard"
-
-    c.terminate()
+    response = requests.get(dashboard)
+    assert response.status_code == 200
 
 
 def test_cluster_dask_local_workers():

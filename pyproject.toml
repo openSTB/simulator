@@ -39,6 +39,7 @@ MPI = [
 tests = [
   "pytest",
   "pytest-cov",
+  "requests",
 ]
 dev = [
   "mypy",
