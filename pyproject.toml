@@ -35,6 +35,14 @@ MPI = [
   "mpi4py",
 ]
 
+# Support for building the documentation.
+doc = [
+  "mkdocs",
+  "mkdocstrings[python]",
+  "mkdocs-material",
+  "mkdocs-api-autonav",
+]
+
 # Support for development and testing.
 tests = [
   "pytest",
@@ -43,7 +51,7 @@ tests = [
 ]
 dev = [
   "mypy",
-  "openstb-simulator[dask-diagnostics,tests]",
+  "openstb-simulator[dask-diagnostics,doc,tests]",
   "ruff",
 ]
 
