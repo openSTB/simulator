@@ -8,6 +8,8 @@ theme:
   font: false
   features:
     - content.code.copy
+    - navigation.tabs
+    - navigation.tabs.sticky
     - search.highlight
     - search.suggest
   palette:
