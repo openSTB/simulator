@@ -55,6 +55,12 @@ dev = [
   "ruff",
 ]
 
+[project.urls]
+Homepage = "https://openstb.dev"
+Documentation = "https://docs.openstb.dev"
+Repository = "https://github.com/openstb/simulator.git"
+Issues = "https://github.com/openstb/simulator/issues"
+
 
 #
 # Install the CLI.
