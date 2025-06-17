@@ -2,13 +2,13 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
 [build-system]
-requires = ["hatchling", "openstb-i18n"]
+requires = ["hatchling", "hatch-vcs", "openstb-i18n"]
 build-backend = "hatchling.build"
 
 [project]
 name = "openstb-simulator"
 description = "SONAR simulator"
-version = "0.1.0"
+dynamic = ["version"]
 
 requires-python = ">=3.11"
 dependencies = [
@@ -150,6 +150,8 @@ exclude = [
 [tool.hatch.build.targets.wheel.hooks.openstb-i18n]
 domain = "openstb.simulator"
 
+[tool.hatch.version]
+source = "vcs"
 
 #
 # Test configuration.
