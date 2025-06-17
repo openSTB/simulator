@@ -33,5 +33,5 @@ pip to install from PyPI, you can just add your desired set of dependencies in s
 brackets:
 
 ```console
-pip install openstb-simulator[dask-diagnostics,mpi]
+pip install 'openstb-simulator[dask-diagnostics,mpi]'
 ```
