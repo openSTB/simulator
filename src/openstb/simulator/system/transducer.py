@@ -14,12 +14,26 @@ _ = translations.load("openstb.simulator").gettext
 
 
 class GenericTransducer(Transducer):
+    """A generic transducer."""
+
     def __init__(
         self,
         position: ArrayLike,
         orientation: ArrayLike | quaternionic.QArray,
         beampattern: PluginOrSpec[Distortion] | None = None,
     ):
+        """
+        Parameters
+        ----------
+        position
+            The position of the transducer relative to the system origin.
+        orientation
+            The orientation of the transducer boresight relative to the x axis of the
+            system.
+        beampattern
+            The distortion model of the beampattern.
+
+        """
         self._position = np.array(position, dtype=float)
         if self._position.shape != (3,):
             raise ValueError(_("position should be a 3-element vector"))

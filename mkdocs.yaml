@@ -65,3 +65,7 @@ plugins:
 watch:
   - src
 
+nav:
+  - index.md
+  - Included plugins:
+    - included_plugins/index.md
