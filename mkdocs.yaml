@@ -67,5 +67,7 @@ watch:
 
 nav:
   - index.md
+  - Getting started:
+    - getting_started/install.md
   - Included plugins:
     - included_plugins/index.md
