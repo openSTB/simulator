@@ -15,9 +15,9 @@ _ = translations.load("openstb.simulator").gettext
 class TOMLLoader(ConfigLoader):
     """Load simulation configuration from a TOML file.
 
-    The file may contain an entry ``__include__`` giving a list of other filenames to
+    The file may contain an entry ``include giving a list of other filenames to
     parse and merge into its configuration. This include behaviour is nested, i.e., any
-    included file may also specify an `__include__` list. Any relative filenames are
+    included file may also specify an `include` list. Any relative filenames are
     evaluated from the directory containing the file currently being processed.
 
     Included files may not overwrite values that have already been set. An exception is
@@ -30,7 +30,7 @@ class TOMLLoader(ConfigLoader):
         """
         Parameters
         ----------
-        filename : path-like
+        filename
             The path to the configuration file.
 
         """
@@ -73,10 +73,10 @@ class TOMLLoader(ConfigLoader):
             config = tomllib.load(fp)
 
         # Extract any includes.
-        includes = config.pop("__include__", [])
+        includes = config.pop("include", [])
         if not isinstance(includes, list):
             raise ValueError(
-                _("{filename}: value of __include__ must be a list").format(
+                _("{filename}: value of include must be a list").format(
                     filename=str(filename)
                 )
             )
