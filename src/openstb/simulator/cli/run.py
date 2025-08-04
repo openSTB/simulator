@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
-import click
 import logging
+
+import click
 from rich.logging import RichHandler
 
 from openstb.simulator.plugin import loader, util

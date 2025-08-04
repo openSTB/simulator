@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+import logging
 import os
 from pathlib import Path
 import tomllib
@@ -64,6 +65,9 @@ class TOMLLoader(ConfigLoader):
             to the method, it is both modified in-place and returned.
 
         """
+        logger = logging.getLogger(__name__)
+        logger.info(_("Loading configuration from %s"), filename)
+
         if current is None:
             self._who_defined = {}
             current = {}

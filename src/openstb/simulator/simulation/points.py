@@ -3,6 +3,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+import logging
 import os
 from pathlib import Path
 import shutil
@@ -323,11 +324,15 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         return sim_futures, tree_futures[0]
 
     def run(self, config: PointSimulationConfig):
+        logger = logging.getLogger(__name__)
+        logger.info(_("Preparing for point target simulation"))
+
         flatten_system(cast(MutableMapping[str, Any], config))
 
         # Ensure any result converter will be able to work.
         result_format = abc.ResultFormat.ZARR_BASEBAND_PRESSURE
         if "result_converter" in config:
+            logger.info(_("Checking result converter is suitable"))
             if not config["result_converter"].can_handle(result_format, config):
                 raise ValueError(_("output converter cannot handle results"))
 
@@ -371,6 +376,14 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         if N_targets == 0:
             raise ValueError(_("no targets to simulate"))
 
+        logger.info(
+            _(
+                "Simulation size: %(Np)d pings, %(Nr)d receivers, %(Ns)d samples per "
+                "trace, %(Nt)d targets"
+            ),
+            {"Np": Np, "Nr": Nr, "Ns": Ns, "Nt": N_targets},
+        )
+
         # Combine into an array of position and reflectivity.
         targets = np.empty((N_targets, 4), dtype=float)
         start = 0
@@ -380,6 +393,7 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
             start += len(target)
 
         # Prepare the cluster.
+        logger.info(_("Initialising Dask cluster"))
         config["dask_cluster"].initialise()
         client = config["dask_cluster"].client
 
@@ -389,6 +403,7 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         chunks = client.scatter(chunks, broadcast=False)
 
         # Collate and send common details to all workers.
+        logger.info(_("Sending common details to cluster workers"))
         distortion = config["transmitter"].distortion + config.get("distortion", [])
         common = client.scatter(
             CommonSettings(
@@ -437,7 +452,9 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         # Futures for result store tasks that have not yet completed.
         store_futures: set[distributed.Future] = set()
 
+        logger.info(_("Beginning simulation"))
         for ping in range(Np):
+            logger.info(_("Starting submission of jobs for ping %(N)d"), {"N": ping})
             for receiver in range(Nr):
                 # Number of simulation tasks we should aim for. We update this here in
                 # case workers are added to or removed from the cluster.
@@ -492,11 +509,22 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         # Tasks for all pings and receivers have been submitted. Wait until the results
         # have been written to disk.
         distributed.wait(store_futures)
+        del store_futures
+        logger.info(_("Simulation complete"))
 
         if "result_converter" in config:
+            logger.info(_("Passing results to result converter"))
             success = config["result_converter"].convert(
                 abc.ResultFormat.ZARR_BASEBAND_PRESSURE, storage, config
             )
             local_store.close()
             if success:
                 shutil.rmtree(self.result_filename)
+            else:
+                logger.error(
+                    _(
+                        "Result conversion failed. Original simulation results can be "
+                        "found at %s"
+                    ),
+                    self.result_filename,
+                )

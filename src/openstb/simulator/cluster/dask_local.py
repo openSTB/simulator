@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+import logging
+
 from dask.system import CPU_COUNT
 import distributed
 from distributed.system import MEMORY_LIMIT
@@ -81,6 +83,15 @@ class DaskLocalCluster(DaskCluster):
         if self._cluster is not None:
             return
 
+        logger = logging.getLogger(__name__)
+        logger.info(
+            _(
+                "Initialising local Dask cluster with %(N)d workers "
+                "(%(ram_MiB)dMiB RAM per worker)"
+            ),
+            {"N": self.workers, "ram_MiB": self.memory / (1024 * 1024)},
+        )
+
         self._cluster = distributed.LocalCluster(
             n_workers=self.workers,
             processes=True,
@@ -100,6 +111,8 @@ class DaskLocalCluster(DaskCluster):
         return self._client
 
     def terminate(self):
+        logger = logging.getLogger(__name__)
+        logger.info(_("Shutting down local Dask cluster"))
         if self._client is not None:
             self._client.shutdown()
             self._client = None
