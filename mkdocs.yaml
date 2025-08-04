@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: openSTB contributors
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+#
 site_name: "OpenSTB simulator"
 copyright: Copyright &copy; OpenSTB contributors
 repo_url: https://github.com/openSTB/simulator

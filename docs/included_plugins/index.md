@@ -1,3 +1,8 @@
+---
+SPDX-FileCopyrightText: openSTB contributors
+SPDX-License-Identifier: BSD-2-Clause-Patent
+---
+
 # Included plugins
 
 The following sections list the plugins included with the simulator. The plugin name
