@@ -9,7 +9,7 @@ its results under.
 
 ```toml
 [simulation]
-name = "points"
+plugin = "points"
 result_filename = "simple_points.zarr"
 targets_per_chunk = 500
 sample_rate = 30e3
@@ -24,7 +24,7 @@ results to be stored in a NumPy `.npz` file:
 
 ``` toml
 [result_converter]
-name = "numpy"
+plugin = "numpy"
 filename = "simple_points.npz"
 compress = false
 ```
@@ -33,7 +33,7 @@ Or we could store them in a MATLAB file.
 
 ``` toml
 [result_converter]
-name = "matlab"
+plugin = "matlab"
 filename = "simple_points.mat"
 ```
 
@@ -45,7 +45,7 @@ listen on -- in this case port 8787 on the local computer, i.e., http://127.0.0.
 
 ```toml
 [dask_cluster]
-name = "local"
+plugin = "local"
 workers = 8
 total_memory = 0.4
 dashboard_address = ":8787"
@@ -59,12 +59,12 @@ beampattern of the transducer via a signal distorting plugin.
 
 ```toml
 [transmitter]
-name = "generic"
+plugin = "generic"
 position = [0, 1.2, 0.3]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
 [transmitter.beampattern]
-name = "rectangular_beampattern"
+plugin = "rectangular_beampattern"
 width = 0.015
 height = 0.03
 transmit = true
@@ -76,7 +76,7 @@ The transmitter will also need a signal to send, in this case an LFM up-chirp.
 
 ```toml
 [signal]
-name = "lfm_chirp"
+plugin = "lfm_chirp"
 f_start = 100e3
 f_stop = 120e3
 duration = 0.015
@@ -95,27 +95,27 @@ down) and with the same orientation.
 
 ```toml
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [-0.1, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [-0.05, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [0, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [0.05, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [0.1, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 ```
@@ -125,7 +125,7 @@ an ideal linear trajectory is sufficient.
 
 ```toml
 [trajectory]
-name = "linear"
+plugin = "linear"
 start_position = [0, 0, 0]
 end_position = [10, 0, 0]
 speed = 1.5
@@ -137,7 +137,7 @@ Next we have to specify when the sonar emits pings. Here, we say it will ping ev
 
 ```toml
 [ping_times]
-name = "constant_interval"
+plugin = "constant_interval"
 interval = 0.2
 start_delay = 0
 end_delay = 0.5
@@ -148,7 +148,7 @@ use an invariant (constant) environment with fixed values.
 
 ```toml
 [environment]
-name = "invariant"
+plugin = "invariant"
 salinity = 14.5
 sound_speed = 1480
 temperature = 11.2
@@ -164,7 +164,7 @@ is reflected back to the sonar.
 
 ```toml
 [[targets]]
-name = "random_point_rectangle"
+plugin = "random_point_rectangle"
 seed = 10671
 Dx = 5
 Dy = 120
@@ -178,7 +178,7 @@ And then lets add a single target at a specific position with a much stronger ec
 
 ```toml
 [[targets]]
-name = "single_point"
+plugin = "single_point"
 position = [5, 40, 10]
 reflectivity = 10
 ```
@@ -189,7 +189,7 @@ we want to use the stop-and-hop approximation to simplify the calculation.
 
 ```toml
 [travel_time]
-name = "stop_and_hop"
+plugin = "stop_and_hop"
 ```
 
 Various distortions can be applied to the acoustic waves. This is also an array of
@@ -198,11 +198,11 @@ the power parameter for spherical spreading) and also due to acoustic attenuatio
 
 ```toml
 [[distortion]]
-name = "geometric_spreading"
+plugin = "geometric_spreading"
 power = 1
 
 [[distortion]]
-name = "anslie_mccolm_attenuation"
+plugin = "anslie_mccolm_attenuation"
 frequency = "centre"
 ```
 
@@ -212,7 +212,7 @@ easier to define this as a general plugin.
 
 ```toml
 [[distortion]]
-name = "rectangular_beampattern"
+plugin = "rectangular_beampattern"
 width = 0.015
 height = 0.03
 transmit = false

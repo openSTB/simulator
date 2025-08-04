@@ -16,7 +16,7 @@
 # The simulation controller, defining the type of simulation we want to perform. In this
 # case, a simple simulation with only point targets.
 [simulation]
-name = "points"
+plugin = "points"
 result_filename = "simple_points.zarr" # Intermediate results, will be converted later.
 targets_per_chunk = 500
 sample_rate = 30e3
@@ -29,7 +29,7 @@ baseband_frequency = 110e3
 # the Dask dashboard is not started, so we have to explicitly state an address it will
 # listen on -- in this case port 8787 on the local computer, i.e., http://127.0.0.1:8787
 [dask_cluster]
-name = "local"
+plugin = "local"
 workers = 8
 total_memory = 0.4
 dashboard_address = ":8787"
@@ -40,7 +40,7 @@ dashboard_address = ":8787"
 # original pose of pointing along the x axis. The value here results in it pointing to
 # starboard and 15 degrees below horizontal.
 [transmitter]
-name = "generic"
+plugin = "generic"
 position = [0, 1.2, 0.3]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
@@ -48,7 +48,7 @@ orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 # beampattern effects, you could omit this section. You could also apply it in the
 # general scale factors section as we do with the receiver beampatterns.
 [transmitter.beampattern]
-name = "rectangular_beampattern"
+plugin = "rectangular_beampattern"
 width = 0.015
 height = 0.03
 transmit = true
@@ -58,7 +58,7 @@ frequency = "centre"  # only calculate the scale factor at the centre frequency
 
 # The signal transmitted by the system.
 [signal]
-name = "lfm_chirp"
+plugin = "lfm_chirp"
 f_start = 100e3
 f_stop = 120e3
 duration = 0.015
@@ -66,7 +66,7 @@ rms_spl = 190
 
 # This is an inline table. We could also put this into a full table [signal.window]
 # similar to what we did with the transmitter beampattern.
-window = {name="tukey", alpha=0.2}
+window = {plugin="tukey", alpha=0.2}
 
 
 # The receivers are an array (list, in Python terms) of tables defining transducers. The
@@ -90,27 +90,27 @@ window = {name="tukey", alpha=0.2}
 # as a distortion later.
 
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [-0.1, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [-0.05, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [0, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [0.05, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
 [[receivers]]
-name = "generic"
+plugin = "generic"
 position = [0.1, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
@@ -118,7 +118,7 @@ orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 # The trajectory followed by the system. A simple linear trajectory is sufficient for
 # our needs.
 [trajectory]
-name = "linear"
+plugin = "linear"
 start_position = [0, 0, 0]
 end_position = [10, 0, 0]
 speed = 1.5
@@ -128,7 +128,7 @@ speed = 1.5
 # 0.2s, starting at the start of the trajectory and with the final ping being at least
 # 0.5s before the end of the trajectory.
 [ping_times]
-name = "constant_interval"
+plugin = "constant_interval"
 interval = 0.2
 start_delay = 0
 end_delay = 0.5
@@ -137,7 +137,7 @@ end_delay = 0.5
 # The environment we are operating in. For simplicity, we use an invariant (constant)
 # environment with fixed values.
 [environment]
-name = "invariant"
+plugin = "invariant"
 salinity = 14.5
 sound_speed = 1480
 temperature = 11.2
@@ -150,7 +150,7 @@ temperature = 11.2
 # normal is pointing up. The reflectivity is the fraction of the incident amplitude that
 # is reflected back to the sonar.
 [[targets]]
-name = "random_point_rectangle"
+plugin = "random_point_rectangle"
 seed = 10671
 Dx = 5
 Dy = 120
@@ -161,7 +161,7 @@ reflectivity = 0.06
 
 # And secondly, a single target at a specific position with a much stronger echo.
 [[targets]]
-name = "single_point"
+plugin = "single_point"
 position = [5, 40, 10]
 reflectivity = 10
 
@@ -170,7 +170,7 @@ reflectivity = 10
 # wave to reach a target and scatter back to a receiver. Here, we want to use the
 # stop-and-hop approximation to simplify the calculation.
 [travel_time]
-name = "stop_and_hop"
+plugin = "stop_and_hop"
 
 
 
@@ -180,14 +180,14 @@ name = "stop_and_hop"
 # Geometric spreading losses. This plugin applies a factor of 1/r^{power} to both the
 # incident and scattered waves. Using a power of 1 corresponds to spherical spreading.
 [[distortion]]
-name = "geometric_spreading"
+plugin = "geometric_spreading"
 power = 1
 
 # Estimate the energy loss due to acoustic attenuation. We decide to calculate this only
 # at the centre frequency rather than calculating a separate loss for each frequency in
 # the simulation.
 [[distortion]]
-name = "anslie_mccolm_attenuation"
+plugin = "anslie_mccolm_attenuation"
 frequency = "centre"
 
 # And apply a beampattern factor corresponding to the receivers. Since we are using the
@@ -196,7 +196,7 @@ frequency = "centre"
 # beampatterns were split to demonstrate how to set it within a transducer
 # specification.
 [[distortion]]
-name = "rectangular_beampattern"
+plugin = "rectangular_beampattern"
 width = 0.015
 height = 0.03
 transmit = false
@@ -207,12 +207,12 @@ frequency = "centre"
 # Finally, convert the intermediate results generated by the simulation controller to
 # our preferred format. In this case, a NumPy npz file is generated.
 [result_converter]
-name = "numpy"
+plugin = "numpy"
 filename = "simple_points.npz"
 compress = false
 
 # If you prefer to use the results in MATLAB, you could comment out the NumPy converter
 # and use the following converter instead.
 # [result_converter]
-# name = "matlab"
+# plugin = "matlab"
 # filename = "simple_points.mat"

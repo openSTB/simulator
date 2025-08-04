@@ -15,7 +15,7 @@ _ = translations.load("openstb.simulator").gettext
 class TOMLLoader(ConfigLoader):
     """Load simulation configuration from a TOML file.
 
-    The file may contain an entry ``include giving a list of other filenames to
+    The file may contain an entry `include` giving a list of other filenames to
     parse and merge into its configuration. This include behaviour is nested, i.e., any
     included file may also specify an `include` list. Any relative filenames are
     evaluated from the directory containing the file currently being processed.
@@ -51,9 +51,9 @@ class TOMLLoader(ConfigLoader):
 
         Parameters
         ----------
-        filename : Path
+        filename
             The path to the file to load.
-        current : dict, optional
+        current
             The current configuration to update. If None, a new configuration will be
             started.
 
@@ -144,28 +144,33 @@ class TOMLLoader(ConfigLoader):
     def _collect_parameters(self, filename: Path, entry: str, spec: dict) -> PluginSpec:
         """Collect names and parameters into a PluginSpec dictionary.
 
+        If one of the parameters is a dictionary, its contents are checked. If it
+        contains a `plugin` key, it is assumed to be a nested plugin definition and is
+        converted to a PluginSpec in the output. If it doesn't contain a `plugin` key,
+        it is assumed to be a regular dictionary and is not modified for the output.
+
         Parameters
         ----------
-        filename : Path
+        filename
             Filename the entry was loaded from. Used for error reporting and to set the
             source of the PluginSpec.
-        entry : str
+        entry
             Name of the table. Used for error reporting.
-        spec : dict
+        spec
             The values of the table loaded from the file.
 
         Returns
         -------
         dict
-            A PluginSpec dictionary. The ``name`` entry from ``spec`` will be copied,
-            and all other items will be placed into a dictionary under the
-            ``parameters`` key.
+            A PluginSpec dictionary. The `plugin` entry from `spec` will be used for the
+            `name` of the PluginSpec, and all other items will be placed into a
+            dictionary under the `parameters` key.
 
         """
-        name = spec.pop("name", None)
+        name = spec.pop("plugin", None)
         if name is None:
             raise ValueError(
-                _("{filename}: no plugin name given for entry {name}").format(
+                _("{filename}: no plugin given for entry {name}").format(
                     filename=filename, name=entry
                 )
             )
@@ -173,7 +178,10 @@ class TOMLLoader(ConfigLoader):
         # Handle nested plugin specs (e.g., transducer beampatterns, signal windows).
         for k in spec.keys():
             if isinstance(spec[k], dict):
-                spec[k] = self._collect_parameters(filename, f"{entry}.{k}", spec[k])
+                if "plugin" in spec[k]:
+                    spec[k] = self._collect_parameters(
+                        filename, f"{entry}.{k}", spec[k]
+                    )
 
         return {
             "name": name,
