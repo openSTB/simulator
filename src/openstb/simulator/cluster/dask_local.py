@@ -101,6 +101,13 @@ class DaskLocalCluster(DaskCluster):
             security=self.security,
         )
 
+        if self.dashboard_address is not None:
+            if self.dashboard_address.startswith(":"):
+                url = f"http://127.0.0.1{self.dashboard_address}"
+            else:
+                url = f"http://{self.dashboard_address}"
+            logger.info(_("Dask dashboard is at %(url)s"), {"url": url})
+
     @property
     def client(self) -> distributed.Client:
         if self._cluster is None:

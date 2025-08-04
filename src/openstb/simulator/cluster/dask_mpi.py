@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+import logging
+
 import dask_mpi
 import distributed
 from mpi4py import MPI
@@ -70,11 +72,11 @@ class DaskMPICluster(DaskCluster):
             local_directory=self.local_directory,
         )
 
-        if self.separate_workers:
-            comm = MPI.COMM_WORLD
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
 
+        if self.separate_workers:
             # Avoid a misconfiguration with a clear error message.
-            rank = comm.Get_rank()
             if rank != 1:
                 raise RuntimeError(
                     _(
@@ -87,8 +89,22 @@ class DaskMPICluster(DaskCluster):
             # MPI inserts a synchronisation barrier with a broadcast.
             comm.bcast(settings, root=1)
 
+        if rank == 1:
+            logger = logging.getLogger(__name__)
+            logger.info(
+                "Initialising Dask MPI cluster on rank %(rank)d of %(size)d",
+                {"rank": rank, "size": comm.Get_size()},
+            )
+
         dask_mpi.initialize(**settings)
         self._initialised = True
+
+        if rank == 1 and self.dashboard_address is not None:
+            if self.dashboard_address.startswith(":"):
+                url = f"http://127.0.0.1{self.dashboard_address}"
+            else:
+                url = f"http://{self.dashboard_address}"
+            logger.info(_("Dask dashboard is at %(url)s"), {"url": url})
 
     @classmethod
     def initialise_worker(cls):
