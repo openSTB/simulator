@@ -645,8 +645,7 @@ class ResultFormat(Enum):
     """Standard formats the simulation type plugins may use for storing results."""
 
     #: A Zarr group for baseband pressure simulations. This has variables sample_time,
-    #: ping_start_time and pressure, and attributes baseband_frequency, sample_frequency
-    #: and fill_value.
+    #: ping_start_time and pressure, and attributes baseband_frequency and sample_rate.
     ZARR_BASEBAND_PRESSURE = 1
 
 
