@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
 import click
+import logging
+from rich.logging import RichHandler
 
 from openstb.simulator.plugin import loader, util
 
@@ -36,7 +38,19 @@ from openstb.simulator.plugin import loader, util
         "reference to a class in a Python file."
     ),
 )
-def run(config_plugin, config_source, dask_worker):
+@click.option(
+    "--log-level",
+    type=click.Choice(
+        ["debug", "info", "warning", "error", "critical"], case_sensitive=False
+    ),
+    default="info",
+    # metavar="LEVEL",
+    help=(
+        "Set the level of log messages to display. Log messages with a lower level "
+        "will be discarded."
+    ),
+)
+def run(config_plugin, config_source, dask_worker, log_level):
     """Run a simulation.
 
     The configuration of the simulation is loaded from the source given by
@@ -44,6 +58,14 @@ def run(config_plugin, config_source, dask_worker):
     source handled by a suitable configuration loading plugin.
 
     """
+    # Configure the display of log messages.
+    logging.basicConfig(
+        level=log_level.upper(),
+        format="%(message)s",
+        datefmt="[%X]",
+        handlers=[RichHandler(rich_tracebacks=True)],
+    )
+
     loader_cls = None
 
     # Given a Dask cluster plugin which supports independent worker spawning.

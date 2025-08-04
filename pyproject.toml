@@ -18,6 +18,7 @@ dependencies = [
   "numpy",
   "openstb-i18n",
   "quaternionic",
+  "rich",
   "scipy",
   "zarr>=3,<4",
 ]
