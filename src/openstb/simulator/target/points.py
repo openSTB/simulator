@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+from typing import Literal
+
 import numpy as np
 from numpy.typing import ArrayLike
 import quaternionic
@@ -125,6 +127,110 @@ class RandomPointRect(PointTargets):
 
         # Fill an array with the reflectivity value.
         self._reflectivity = np.full(self._len, self._reflectivityval, dtype=float)
+
+    def __len__(self) -> int:
+        return self._len
+
+    @property
+    def position(self) -> np.ndarray:
+        return self._position
+
+    @property
+    def reflectivity(self) -> np.ndarray:
+        return self._reflectivity
+
+
+class RandomPointTriangle(PointTargets):
+    """A set of point targets uniformly distributed within a triangle."""
+
+    def __init__(
+        self,
+        seed: int,
+        p1: ArrayLike,
+        p2: ArrayLike,
+        p3: ArrayLike,
+        point_density: float,
+        reflectivity: float | Literal["omnidirectional", "hemispherical"],
+    ):
+        """
+        Parameters
+        ----------
+        seed
+            The seed for the random number generator which places the point targets.
+        p1
+            The position of the first corner of the triangle.
+        p2
+            The position of the second corner of the triangle.
+        p3
+            The position of the third corner of the triangle.
+        point_density
+            The density of the point targets in targets per square metre.
+        reflectivity
+            The reflectivity of the point targets. This is a amplitude scaling factor
+            applied to the incident pulse to get the scattered pulse. The special values
+            "omnidirectional" and "hemispherical" model omnidirectional (uniform
+            scattering over the sphere) and hemispherical (uniform scattering over the
+            hemisphere facing the sonar) scattering and correspond to 1/4pi and 1/2pi
+            respectively.
+
+        """
+        self.seed = seed
+        if point_density < 0:
+            raise ValueError(_("point density cannot be negative"))
+        self.point_density = point_density
+
+        # Check the points are the right size.
+        self.p1 = np.atleast_1d(p1)
+        if self.p1.shape != (3,):
+            raise ValueError(_("p1 must have exactly three values"))
+        self.p2 = np.atleast_1d(p2)
+        if self.p2.shape != (3,):
+            raise ValueError(_("p2 must have exactly three values"))
+        self.p3 = np.atleast_1d(p3)
+        if self.p3.shape != (3,):
+            raise ValueError(_("p3 must have exactly three values"))
+
+        # Generate the vectors and check they are non-zero.
+        self.v2 = self.p2 - self.p1
+        l2 = np.linalg.norm(self.v2)
+        if np.isclose(l2, 0):
+            raise ValueError(_("p1 and p2 cannot be coincident"))
+        self.v3 = self.p3 - self.p1
+        l3 = np.linalg.norm(self.v3)
+        if np.isclose(l3, 0):
+            raise ValueError(_("p1 and p3 cannot be coincident"))
+
+        # Check the vectors are not colinear.
+        angle = np.arccos(np.dot(self.v2, self.v3) / (l2 * l3))
+        if np.isclose(angle, 0) or np.isclose(angle, np.pi):
+            raise ValueError(_("points cannot be colinear"))
+
+        # Number of points needed to meet the density.
+        area = 0.5 * l2 * l3 * np.sin(angle)
+        self._len = int(np.round(area * self.point_density))
+        if self._len < 1:
+            raise ValueError(_("no point targets in triangle"))
+
+        # Handle the special cases of the reflectivity.
+        if reflectivity == "omnidirectional":
+            self._reflectivity_val = 1 / (4 * np.pi)
+        elif reflectivity == "hemispherical":
+            self._reflectivity_val = 1 / (2 * np.pi)
+        else:
+            self._reflectivity_val = float(reflectivity)
+
+    def prepare(self):
+        # Generate position along each of the basis vectors.
+        rng = np.random.default_rng(self.seed)
+        u = rng.uniform(size=(self._len, 2))
+
+        # Reflect positions in the other part of the parallelogram.
+        reflect = np.sum(u, axis=-1) > 1
+        u[reflect] = 1 - u[reflect]
+
+        # Now we can find the position and reflectivity arrays.
+        self._position = self.p1 + u[:, 0, None] * self.v2 + u[:, 1, None] * self.v3
+        self._reflectivity = np.full(self._len, self._reflectivity_val, dtype=float)
 
     def __len__(self) -> int:
         return self._len

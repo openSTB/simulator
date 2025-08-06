@@ -97,6 +97,7 @@ constant_interval = "openstb.simulator.system.ping_times:ConstantInterval"
 
 [project.entry-points."openstb.simulator.point_targets"]
 random_point_rectangle = "openstb.simulator.target.points:RandomPointRect"
+random_point_triangle = "openstb.simulator.target.points:RandomPointTriangle"
 single_point = "openstb.simulator.target.points:SinglePoint"
 
 [project.entry-points."openstb.simulator.result_converter"]

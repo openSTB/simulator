@@ -61,6 +61,9 @@ extended, further details and examples of the plugins will be added.
 * `random_point_rectangle`: points randomly distributed inside a rectangular area
   ([API documentation][openstb.simulator.target.points.RandomPointRect])
 
+* `random_point_triangle`: points randomly distributed inside a triangle
+  ([API documentation][openstb.simulator.target.points.RandomPointTriangle])
+
 * `single_point`: single point target at a specified location
   ([API documentation][openstb.simulator.target.points.SinglePoint])
 

@@ -124,6 +124,134 @@ def test_target_points_rprect_repeatability():
 
 
 @pytest.mark.parametrize(
+    "seed,p1,p2,p3",
+    [
+        (1178167, [0, 0, 0], [1, 0, 0], [0, 1, 0]),
+        (8984019, [1, 0, 1], [1, 1, 2], [2, 1, 3]),
+        (6629369, [0.5, 1.25, -10.75], [2.22, 3.33, -8.9], [-0.5, 1.3, -7.7]),
+    ],
+)
+def test_target_points_rptri_basic(seed, p1, p2, p3):
+    """target.points: basic behaviour of RandomPointTriangle"""
+    tri = points.RandomPointTriangle(seed, p1, p2, p3, 10, 0.1)
+    tri.prepare()
+
+    # Normal for the plane containing the triangle.
+    v1 = np.array(p2) - np.array(p1)
+    v2 = np.array(p3) - np.array(p1)
+    normal = np.cross(v1, v2)
+    assert not np.isclose(np.linalg.norm(normal), 0)
+
+    # Check the number of points.
+    area = 0.5 * np.sqrt(np.dot(v1, v1) * np.dot(v2, v2) - np.dot(v1, v2) ** 2)
+    N = int(np.round(area * 10))
+    assert len(tri) == N
+
+    # Check all points lie in the plane.
+    assert tri.position.shape == (N, 3)
+    oop = np.dot(tri.position - p1, normal)
+    assert np.allclose(oop, 0), "not all points in same plane as triangle"
+
+    # Shift the corners so each target becomes the origin of the whole triangle.
+    a = p1 - tri.position
+    b = p2 - tri.position
+    c = p3 - tri.position
+
+    # Find the normals of the three sub-triangles formed with each target.
+    u = np.cross(b, c)
+    v = np.cross(c, a)
+    w = np.cross(a, b)
+
+    # For a point in the triangle, all normals will point in the same direction.
+    assert np.all(np.sum(u * v, axis=-1) >= 0), "points not in triangle"
+    assert np.all(np.sum(u * w, axis=-1) >= 0), "points not in triangle"
+
+    # Check the reflectivity is the value we set.
+    assert tri.reflectivity.shape == (N,)
+    assert np.allclose(tri.reflectivity, 0.1)
+
+
+def test_target_points_rptri_corner_error():
+    """target.points: error checking of corners in RandomPointTriangle"""
+    with pytest.raises(ValueError, match="p1.+three values"):
+        points.RandomPointTriangle(110110, [0, 1], [1, 2, 3], [4, 5, 6], 5, 0.2)
+    with pytest.raises(ValueError, match="p1.+three values"):
+        points.RandomPointTriangle(110110, [0, 1, 2, 3], [1, 2, 3], [4, 5, 6], 5, 0.2)
+    with pytest.raises(ValueError, match="p1.+three values"):
+        points.RandomPointTriangle(
+            110110, [[0, 1, 0], [0, 0, 1]], [1, 2, 3], [4, 5, 6], 5, 0.2
+        )
+
+    with pytest.raises(ValueError, match="p2.+three values"):
+        points.RandomPointTriangle(110110, [1, 2, 3], [0, 1], [4, 5, 6], 5, 0.2)
+    with pytest.raises(ValueError, match="p2.+three values"):
+        points.RandomPointTriangle(110110, [1, 2, 3], [0, 1, 2, 3], [4, 5, 6], 5, 0.2)
+    with pytest.raises(ValueError, match="p2.+three values"):
+        points.RandomPointTriangle(
+            110110, [1, 2, 3], [[0, 1, 0], [0, 0, 1]], [4, 5, 6], 5, 0.2
+        )
+
+    with pytest.raises(ValueError, match="p3.+three values"):
+        points.RandomPointTriangle(110110, [1, 2, 3], [4, 5, 6], [0, 1], 5, 0.2)
+    with pytest.raises(ValueError, match="p3.+three values"):
+        points.RandomPointTriangle(110110, [1, 2, 3], [4, 5, 6], [0, 1, 2, 3], 5, 0.2)
+    with pytest.raises(ValueError, match="p3.+three values"):
+        points.RandomPointTriangle(
+            11, [1, 2, 3], [4, 5, 6], [[0, 1, 0], [0, 0, 1]], 5, 0.2
+        )
+
+    with pytest.raises(ValueError, match="p1.+p2.+coincident"):
+        points.RandomPointTriangle(10, [0, 1, 0], [0, 1, 0], [1, 2, 3], 5, 0.2)
+    with pytest.raises(ValueError, match="p1.+p3.+coincident"):
+        points.RandomPointTriangle(10, [-10, 11, 2], [1, 2, 3], [-10, 11, 2], 5, 0.2)
+    with pytest.raises(ValueError, match="cannot be colinear"):
+        points.RandomPointTriangle(10, [0, 0, 0], [1, 0, 0], [10, 0, 0], 8, 0.1)
+    with pytest.raises(ValueError, match="cannot be colinear"):
+        points.RandomPointTriangle(10, [0, 0, 0], [1, 0, 0], [-10, 0, 0], 8, 0.1)
+
+
+def test_target_points_rptri_error():
+    """target.points: other error checking with RandomPointTriangle"""
+    with pytest.raises(ValueError, match="density cannot be negative"):
+        points.RandomPointTriangle(110110, [0, 0, 1], [1, 2, 3], [4, 5, 6], -5, 0.2)
+    with pytest.raises(ValueError, match="no point targets"):
+        points.RandomPointTriangle(110110, [0, 0, 1], [1, 2, 3], [4, 5, 6], 0.0001, 0.2)
+
+
+@pytest.mark.parametrize(
+    "param,expected",
+    [
+        (0.5, 0.5),
+        ("omnidirectional", 1 / (4 * np.pi)),
+        ("hemispherical", 1 / (2 * np.pi)),
+    ],
+)
+def test_target_points_rptri_reflectivity(param, expected):
+    """target.points: RandomPointTriangle reflectivity settings"""
+    tgt = points.RandomPointTriangle(32, [0, 0, 0], [1, 0, 0], [0, 0, 1], 5, param)
+    tgt.prepare()
+    assert np.allclose(tgt.reflectivity, expected)
+
+
+def test_target_points_rptri_repeatability():
+    """target.points: RandomPointTriangle targets are repeatable"""
+    tgt1 = points.RandomPointTriangle(
+        1776771, [1, 2, 3], [-4.5, 2, 0.7], [1.7, -2, 1], 25, 0.06
+    )
+    tgt1.prepare()
+
+    tgt2 = points.RandomPointTriangle(
+        1776771, [1, 2, 3], [-4.5, 2, 0.7], [1.7, -2, 1], 25, 0.06
+    )
+    tgt2.prepare()
+
+    # Could probably use == with the position/reflectivity, but I don't trust floats.
+    assert len(tgt1) == len(tgt2)
+    assert np.allclose(tgt1.position, tgt2.position)
+    assert np.allclose(tgt1.reflectivity, tgt2.reflectivity)
+
+
+@pytest.mark.parametrize(
     "position,reflectivity",
     [
         ([0, 0, 0], 1),
