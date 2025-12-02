@@ -222,4 +222,3 @@ known-first-party = [
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/extra/typing_stubs"
-plugins = ["numpy.typing.mypy_plugin"]
