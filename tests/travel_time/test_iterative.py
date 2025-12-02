@@ -113,3 +113,23 @@ def test_tt_iterative_nonconverging():
             [[np.cos(np.pi / 4), 0, 0, np.sin(np.pi / 4)]],
             [[0, 30, 0], [0, 40, 0]],
         )
+
+
+def test_tt_iterative_past_end():
+    """travel_time: iterative calculation gives clear error if past end of trajectory"""
+    c = 1478.0
+    v = 1.0
+
+    ttcalc = Iterative(max_iterations=20, tolerance=50e-9)
+    traj = Linear([-10, 0, 0], [10, 0, 0], v)
+    with pytest.raises(RuntimeError, match="after end of trajectory"):
+        ttcalc.calculate(
+            traj,
+            19.99,
+            InvariantEnvironment(salinity=18, sound_speed=c, temperature=4.2),
+            [0, 1, 0],
+            [np.cos(np.pi / 4), 0, 0, np.sin(np.pi / 4)],
+            [[0, 1, 0]],
+            [[np.cos(np.pi / 4), 0, 0, np.sin(np.pi / 4)]],
+            [[0, 30, 0], [0, 40, 0]],
+        )

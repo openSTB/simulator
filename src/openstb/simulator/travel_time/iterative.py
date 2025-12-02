@@ -36,6 +36,10 @@ class Iterative(TravelTime):
     effects such as attenuation and spreading loss, separate plugins must be included in
     the simulation setup.
 
+    If a proposed reception time is after the end of the trajectory, an exception will
+    be raised. Ensure that your ping time plugin is configured to leave a suitable gap
+    between the final ping and the end of the trajectory for the echoes to return.
+
     """
 
     def __init__(self, max_iterations: int, tolerance: float):
@@ -104,6 +108,8 @@ class Iterative(TravelTime):
             # Position and orientation of the vehicle at proposed reception times.
             vehicle_pos_rx = trajectory.position(rx_time)  # (Nr, Nt, 3)
             vehicle_ori_rx = trajectory.orientation(rx_time)  # (Nr, Nt, 4)
+            if np.any(np.isnan(vehicle_pos_rx)):
+                raise RuntimeError(_("echoes received after end of trajectory"))
 
             # Corresponding position of receivers.
             rx_pos_rx = vehicle_pos_rx + rotate_elementwise(
