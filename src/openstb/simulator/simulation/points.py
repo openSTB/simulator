@@ -466,6 +466,13 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
                     res = distributed.wait(sim_futures, return_when="FIRST_COMPLETED")
                     sim_futures = set(res.not_done)
 
+                    # Check for failures in any completed futures.
+                    for future in res.done:
+                        if future.status == "error":
+                            raise future.exception()
+                        if future.status == "cancelled":
+                            raise RuntimeError(_("a future was cancelled"))
+
                     # Drop references to any store commands that have completed. This
                     # allows the scheduler to remove them and the tasks that they
                     # depended on.
@@ -508,7 +515,12 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
 
         # Tasks for all pings and receivers have been submitted. Wait until the results
         # have been written to disk.
-        distributed.wait(store_futures)
+        res = distributed.wait(store_futures)
+        for future in res.done:
+            if future.status == "error":
+                raise future.exception()
+            if future.status == "cancelled":
+                raise RuntimeError(_("a future was cancelled"))
         del store_futures
         logger.info(_("Simulation complete"))
 
