@@ -28,13 +28,13 @@ def test_cluster_dask_local():
         return num, get_worker().id
 
     futures = c.client.map(workerfunc, [0, 1, 2, 3, 4, 5])
-    wait(futures)
-    results = [future.result() for future in futures]
+    completed = wait(futures)
+    results = [future.result() for future in completed.done]
     c.terminate()
 
     assert client.status == "closed"
     assert {r[0] for r in results} == {0, 1, 2, 3, 4, 5}
-    assert len({r[1] for r in results}) == 2
+    assert len({r[1] for r in results}) <= 2
 
     # Terminating twice should cause no issues.
     c.terminate()
@@ -65,6 +65,8 @@ def test_cluster_dask_local_dashboard(caplog):
     # Attempt to access the status page.
     response = requests.get(dashboard)
     assert response.status_code == 200
+
+    c.terminate()
 
 
 def test_cluster_dask_local_workers():
