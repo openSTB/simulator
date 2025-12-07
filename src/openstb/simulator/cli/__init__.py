@@ -4,6 +4,7 @@
 import click
 
 from openstb.simulator.cli.run import run
+from openstb.simulator.cli.seed import seed
 
 
 @click.group(
@@ -15,3 +16,4 @@ def openstb_sim():
 
 
 openstb_sim.add_command(run)
+openstb_sim.add_command(seed)

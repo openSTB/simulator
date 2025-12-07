@@ -207,3 +207,23 @@ class ChunkedRNG:
             remaining -= block_count
 
         return np.concat(samples)
+
+
+def generate_seed() -> int:
+    """Generate a random seed.
+
+    Internally, this uses [numpy.random.SeedSequence][] to find a suitable source of
+    entropy to form the seed.
+
+    Returns
+    -------
+    seed : int
+        A positive integer to use as a random seed. The size of the seed depends on the
+        default SeedSequence settings; as of the time of writing, this integer will be
+        at least 128 bits long.
+
+    """
+    seq = np.random.SeedSequence(None)
+    if not isinstance(seq.entropy, int):
+        raise RuntimeError(_("unexpected type of entropy when generating seed"))
+    return seq.entropy
