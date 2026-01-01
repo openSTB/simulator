@@ -269,6 +269,11 @@ def config_loader(plugin_spec: PluginOrSpec[abc.ConfigLoader]) -> abc.ConfigLoad
     return load_plugin("openstb.simulator.config_loader", plugin_spec)
 
 
+@register_loader(name="controller")
+def controller(plugin_spec: PluginOrSpec[abc.Controller]) -> abc.Controller:
+    return load_plugin("openstb.simulator.controller", plugin_spec)
+
+
 @register_loader(name="Dask cluster")
 def dask_cluster(plugin_spec: PluginOrSpec[abc.DaskCluster]) -> abc.DaskCluster:
     return load_plugin("openstb.simulator.dask_cluster", plugin_spec)
@@ -307,11 +312,6 @@ def signal(plugin_spec: PluginOrSpec[abc.Signal]) -> abc.Signal:
 @register_loader(name="signal window")
 def signal_window(plugin_spec: PluginOrSpec[abc.SignalWindow]) -> abc.SignalWindow:
     return load_plugin("openstb.simulator.signal_window", plugin_spec)
-
-
-@register_loader(name="simulation")
-def simulation(plugin_spec: PluginOrSpec[abc.Simulation]) -> abc.Simulation:
-    return load_plugin("openstb.simulator.simulation", plugin_spec)
 
 
 @register_loader(name="system")

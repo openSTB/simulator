@@ -78,6 +78,9 @@ openstb-sim = "openstb.simulator.cli:openstb_sim"
 [project.entry-points."openstb.simulator.config_loader"]
 toml = "openstb.simulator.config_loader.toml:TOMLLoader"
 
+[project.entry-points."openstb.simulator.controller"]
+simple_points = "openstb.simulator.controller.simple_points:SimplePointSimulation"
+
 [project.entry-points."openstb.simulator.dask_cluster"]
 local = "openstb.simulator.cluster.dask_local:DaskLocalCluster"
 mpi = "openstb.simulator.cluster.dask_mpi:DaskMPICluster"
@@ -106,9 +109,6 @@ numpy = "openstb.simulator.result_converter.numpy:NumpyConverter"
 
 [project.entry-points."openstb.simulator.signal"]
 lfm_chirp = "openstb.simulator.system.signal:LFMChirp"
-
-[project.entry-points."openstb.simulator.simulation"]
-points = "openstb.simulator.simulation.points:PointSimulation"
 
 [project.entry-points."openstb.simulator.signal_window"]
 blackman = "openstb.simulator.system.signal_windows:BlackmanWindow"

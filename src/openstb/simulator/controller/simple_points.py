@@ -22,8 +22,8 @@ from openstb.simulator.plugin.util import flatten_system
 _ = translations.load("openstb.simulator").gettext
 
 
-class PointSimulationConfig(TypedDict):
-    """Specification for the PointSimulator configuration dictionary."""
+class SimplePointConfig(TypedDict):
+    """Specification for the SimplePointSimulation configuration dictionary."""
 
     # Dask cluster to run the simulation on.
     dask_cluster: abc.DaskCluster
@@ -197,7 +197,7 @@ def _point_simulation_store(
         storage[ping, receiver, :] = result
 
 
-class PointSimulation(abc.Simulation[PointSimulationConfig]):
+class SimplePointSimulation(abc.Controller[SimplePointConfig]):
     """Simulation using idealised point targets.
 
     The echo from each point target is summed to get the final result. Occlusions are
@@ -273,12 +273,12 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
 
     @property
     def config_class(self):
-        return PointSimulationConfig
+        return SimplePointConfig
 
     def _submit(
         self,
         client: distributed.Client,
-        config: PointSimulationConfig,
+        config: SimplePointConfig,
         common: CommonSettings,
         ping: int,
         ping_time: float,
@@ -323,7 +323,7 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
 
         return sim_futures, tree_futures[0]
 
-    def run(self, config: PointSimulationConfig):
+    def run(self, config: SimplePointConfig):
         logger = logging.getLogger(__name__)
         logger.info(_("Preparing for point target simulation"))
 

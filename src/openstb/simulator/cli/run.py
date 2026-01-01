@@ -51,7 +51,7 @@ from openstb.simulator.plugin import loader, util
         "will be discarded."
     ),
 )
-def run(config_plugin, config_source, dask_worker, log_level):
+def run(config_plugin: str, config_source: str, dask_worker: str, log_level: str):
     """Run a simulation.
 
     The configuration of the simulation is loaded from the source given by
@@ -94,12 +94,12 @@ def run(config_plugin, config_source, dask_worker, log_level):
     config_loader = loader_cls(config_source)
     config = config_loader.load()
 
-    # Get the simulation plugin.
-    simulation = loader.simulation(config.pop("simulation"))
+    # Get the controller plugin.
+    controller = loader.controller(config.pop("controller"))
 
     # Load all the other plugins, and check it conforms to the configuration required by
-    # the simulation plugin.
-    util.load_config_plugins(simulation.config_class, config)
+    # the controller.
+    util.load_config_plugins(controller.config_class, config)
 
     # And then we can run the simulation.
-    simulation.run(config)
+    controller.run(config)

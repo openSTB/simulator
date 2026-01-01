@@ -37,8 +37,18 @@ class Plugin(ABC):
     pass
 
 
-class Simulation(Plugin, Generic[SimulationConfig]):
-    """A type of simulation."""
+class Controller(Plugin, Generic[SimulationConfig]):
+    """Controller to run a simulation."""
+
+    @property
+    @abstractmethod
+    def config_class(src) -> type[SimulationConfig]:
+        """The configuration class for this controller.
+
+        Note that this is the class, not an instance of the class.
+
+        """
+        pass
 
     @abstractmethod
     def run(self, config: SimulationConfig):
@@ -49,16 +59,6 @@ class Simulation(Plugin, Generic[SimulationConfig]):
         config : mapping
             A mapping configuring the simulation. The specific structure will be defined
             by each plugin.
-
-        """
-        pass
-
-    @property
-    @abstractmethod
-    def config_class(src) -> type[SimulationConfig]:
-        """The simulation class for this type of simulation.
-
-        Note that this is the class, not an instance of the class.
 
         """
         pass

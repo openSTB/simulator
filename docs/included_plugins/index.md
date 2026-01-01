@@ -83,10 +83,10 @@ extended, further details and examples of the plugins will be added.
   ([API documentation][openstb.simulator.system.signal.LFMChirp])
 
 
-## Simulation types
+## Simulation controllers
 
-* `points`: simulate using idealised point targets
-  ([API documentation][openstb.simulator.simulation.points.PointSimulation])
+* `simple_points`: simulate using idealised point targets
+  ([API documentation][openstb.simulator.controller.simple_points.SimplePointSimulation])
 
 
 ## Signal windows

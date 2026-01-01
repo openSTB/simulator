@@ -15,8 +15,8 @@
 
 # The simulation controller, defining the type of simulation we want to perform. In this
 # case, a simple simulation with only point targets.
-[simulation]
-plugin = "points"
+[controller]
+plugin = "simple_points"
 result_filename = "simple_points.zarr" # Intermediate results, will be converted later.
 targets_per_chunk = 500
 sample_rate = 30e3
