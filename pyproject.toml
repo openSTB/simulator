@@ -222,3 +222,6 @@ known-first-party = [
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/extra/typing_stubs"
+exclude = [
+  "plugin_triple.py"
+]
