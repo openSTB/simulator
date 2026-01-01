@@ -9,6 +9,7 @@ import quaternionic
 
 from openstb.i18n.support import translations
 from openstb.simulator.plugin.abc import PointTargets
+from openstb.simulator.random import ChunkedRNG
 
 _ = translations.load("openstb.simulator").gettext
 
@@ -58,7 +59,7 @@ class RandomPointRect(PointTargets):
             respectively.
 
         """
-        self.rng = np.random.default_rng(seed)
+        self.seed = seed
         self.Dx = Dx
         self.Dy = Dy
         self.point_density = point_density
@@ -69,6 +70,18 @@ class RandomPointRect(PointTargets):
             raise ValueError(
                 _("centre position of rectangle must have exactly 3 values")
             )
+
+        # Check the size is valid.
+        if self.Dx < 0 or np.isclose(Dx, 0):
+            raise ValueError(_("x size of rectangle must be positive"))
+        if self.Dy < 0 or np.isclose(Dy, 0):
+            raise ValueError(_("y size of rectangle must be positive"))
+
+        # Figure out the number of points needed to meet the density.
+        area = self.Dx * self.Dy
+        self._len = int(np.round(area * self.point_density))
+        if self._len < 0:
+            raise ValueError(_("no points placed in rectangle"))
 
         # Check and scale the given normal.
         normal = np.array(normal, dtype=float)
@@ -111,33 +124,29 @@ class RandomPointRect(PointTargets):
         else:
             self._reflectivityval = reflectivity
 
-    def prepare(self):
-        # Figure out the number of points needed to meet the density.
-        area = self.Dx * self.Dy
-        self._len = int(np.round(area * self.point_density))
-
-        # Place them uniformly within the xy plane.
-        position = np.empty((self._len, 3), dtype=float)
-        position[:, 0] = self.rng.uniform(-self.Dx / 2, self.Dx / 2, self._len)
-        position[:, 1] = self.rng.uniform(-self.Dy / 2, self.Dy / 2, self._len)
-        position[:, 2] = 0
-
-        # Rotate and shift to the desired positions.
-        self._position = self.centre + self._ori.rotate(position)
-
-        # Fill an array with the reflectivity value.
-        self._reflectivity = np.full(self._len, self._reflectivityval, dtype=float)
+        # Initialise the RNG.
+        self._rng = ChunkedRNG(self.seed, "uniform", 2)
 
     def __len__(self) -> int:
         return self._len
 
-    @property
-    def position(self) -> np.ndarray:
-        return self._position
+    def get_chunk(self, start_index: int, count: int) -> tuple[np.ndarray, np.ndarray]:
+        if count == -1:
+            count = self._len - start_index
 
-    @property
-    def reflectivity(self) -> np.ndarray:
-        return self._reflectivity
+        # Get relative x and y positions for each point in chunk.
+        rand = self._rng.sample(start_index, count)
+        count = rand.shape[0]
+
+        # Create a relative position array and then rotate and shift to global.
+        position = np.zeros((count, 3), dtype=float)
+        position[:, 0] = (rand[:, 0] - 0.5) * self.Dx
+        position[:, 1] = (rand[:, 1] - 0.5) * self.Dy
+        position = self.centre + self._ori.rotate(position)
+
+        reflectivity = np.full(count, self._reflectivityval, dtype=float)
+
+        return position, reflectivity
 
 
 class RandomPointTriangle(PointTargets):
@@ -219,29 +228,29 @@ class RandomPointTriangle(PointTargets):
         else:
             self._reflectivity_val = float(reflectivity)
 
-    def prepare(self):
-        # Generate position along each of the basis vectors.
-        rng = np.random.default_rng(self.seed)
-        u = rng.uniform(size=(self._len, 2))
+        # Initialise the RNG.
+        self._rng = ChunkedRNG(self.seed, "uniform", 2)
+
+    def __len__(self) -> int:
+        return self._len
+
+    def get_chunk(self, start_index: int, count: int) -> tuple[np.ndarray, np.ndarray]:
+        if count == -1:
+            count = self._len - start_index
+
+        # Get position along each of the basis vectors.
+        u = self._rng.sample(start_index, count)
 
         # Reflect positions in the other part of the parallelogram.
         reflect = np.sum(u, axis=-1) > 1
         u[reflect] = 1 - u[reflect]
 
-        # Now we can find the position and reflectivity arrays.
-        self._position = self.p1 + u[:, 0, None] * self.v2 + u[:, 1, None] * self.v3
-        self._reflectivity = np.full(self._len, self._reflectivity_val, dtype=float)
+        # Multiply by the basis vectors to get the positions.
+        position = self.p1 + u[:, 0, None] * self.v2 + u[:, 1, None] * self.v3
 
-    def __len__(self) -> int:
-        return self._len
+        reflectivity = np.full(position.shape[0], self._reflectivity_val, dtype=float)
 
-    @property
-    def position(self) -> np.ndarray:
-        return self._position
-
-    @property
-    def reflectivity(self) -> np.ndarray:
-        return self._reflectivity
+        return position, reflectivity
 
 
 class SinglePoint(PointTargets):
@@ -266,10 +275,8 @@ class SinglePoint(PointTargets):
     def __len__(self) -> int:
         return 1
 
-    @property
-    def position(self) -> np.ndarray:
-        return self._position
+    def get_chunk(self, start_index: int, count: int) -> tuple[np.ndarray, np.ndarray]:
+        if count == -1:
+            count = 1
 
-    @property
-    def reflectivity(self) -> np.ndarray:
-        return self._reflectivity
+        return self._position, self._reflectivity

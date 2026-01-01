@@ -388,8 +388,9 @@ class PointSimulation(abc.Simulation[PointSimulationConfig]):
         targets = np.empty((N_targets, 4), dtype=float)
         start = 0
         for target in config["targets"]:
-            targets[start : start + len(target), :3] = target.position
-            targets[start : start + len(target), 3] = target.reflectivity
+            position, reflectivity = target.get_chunk(0, -1)
+            targets[start : start + len(target), :3] = position
+            targets[start : start + len(target), 3] = reflectivity
             start += len(target)
 
         # Prepare the cluster.

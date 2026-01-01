@@ -46,12 +46,13 @@ def test_target_points_rprect_uniform():
     """target.points: RandomPointRect uniformly distributes points"""
     tgt = points.RandomPointRect(67191, 100, 50, (0, 0, 0), (0, 0, -1), 10, 1)
     tgt.prepare()
+    pos, strength = tgt.get_chunk(0, -1)
 
     # Use a Kolmogorov-Smirnov test with a confidence level of 90%. Note that for the
     # kstest() function the uniform distribution is parametrised as (min, width).
-    stat, pvalue = kstest(tgt.position[:, 0], "uniform", (-50, 100))
+    stat, pvalue = kstest(pos[:, 0], "uniform", (-50, 100))
     assert pvalue > 0.1, "x positions not uniformly distributed"
-    stat, pvalue = kstest(tgt.position[:, 1], "uniform", (-25, 50))
+    stat, pvalue = kstest(pos[:, 1], "uniform", (-25, 50))
     assert pvalue > 0.1, "y positions not uniformly distributed"
 
 
@@ -69,17 +70,18 @@ def test_target_points_rprect_position(seed, Dx, Dy, centre, normal):
     """target.points: RandomPointRect positions"""
     tgt = points.RandomPointRect(seed, Dx, Dy, centre, normal, 10, 1)
     tgt.prepare()
+    pos, strength = tgt.get_chunk(0, -1)
 
     # Check the centroid of the points. We need to have a reasonable tolerance here.
-    assert np.allclose(tgt.position.mean(axis=0), centre, rtol=0, atol=0.2)
+    assert np.allclose(pos.mean(axis=0), centre, rtol=0, atol=0.2)
 
     # Take the general form of the plane equation, ax + by + cz + d = 0 where (a, b, c)
     # is the normal and d a constant. Rearrange to -z = (a/c)x + (b/c)y + (d/c).
     # From this we can form a system of equations Ap = z where A = [x y 1] and
     # p = [a/c b/c d/c].
     A = np.ones((len(tgt), 3), dtype=float)
-    A[:, :2] = tgt.position[:, :2]
-    z = tgt.position[:, 2]
+    A[:, :2] = pos[:, :2]
+    z = pos[:, 2]
 
     # Solve for p using the pseudoinverse form of least squares.
     p = np.linalg.inv(A.T @ A) @ A.T @ z
@@ -106,21 +108,24 @@ def test_target_points_rprect_reflectivity(param, expected):
     """target.points: RandomPointRect reflectivity settings"""
     tgt = points.RandomPointRect(1, 10, 10, [0, 0, 0], [0, 0, -1], 5, param)
     tgt.prepare()
-    assert np.allclose(tgt.reflectivity, expected)
+    pos, strength = tgt.get_chunk(0, -1)
+    assert np.allclose(strength, expected)
 
 
 def test_target_points_rprect_repeatability():
     """target.points: RandomPointRect targets are repeatable"""
     tgt1 = points.RandomPointRect(1776771, 10, 44, [0, 0, 0], [0, 0, -1], 5, 0.3)
     tgt1.prepare()
+    pos1, strength1 = tgt1.get_chunk(0, -1)
 
     tgt2 = points.RandomPointRect(1776771, 10, 44, [0, 0, 0], [0, 0, -1], 5, 0.3)
     tgt2.prepare()
+    pos2, strength2 = tgt2.get_chunk(0, -1)
 
-    # Could probably used == with the position/reflectivity, but I don't trust floats.
+    # Could probably use == with the position/reflectivity, but I don't trust floats.
     assert len(tgt1) == len(tgt2)
-    assert np.allclose(tgt1.position, tgt2.position)
-    assert np.allclose(tgt1.reflectivity, tgt2.reflectivity)
+    assert np.allclose(pos1, pos2)
+    assert np.allclose(strength1, strength2)
 
 
 @pytest.mark.parametrize(
@@ -135,6 +140,7 @@ def test_target_points_rptri_basic(seed, p1, p2, p3):
     """target.points: basic behaviour of RandomPointTriangle"""
     tri = points.RandomPointTriangle(seed, p1, p2, p3, 10, 0.1)
     tri.prepare()
+    pos, strength = tri.get_chunk(0, -1)
 
     # Normal for the plane containing the triangle.
     v1 = np.array(p2) - np.array(p1)
@@ -148,14 +154,14 @@ def test_target_points_rptri_basic(seed, p1, p2, p3):
     assert len(tri) == N
 
     # Check all points lie in the plane.
-    assert tri.position.shape == (N, 3)
-    oop = np.dot(tri.position - p1, normal)
+    assert pos.shape == (N, 3)
+    oop = np.dot(pos - p1, normal)
     assert np.allclose(oop, 0), "not all points in same plane as triangle"
 
     # Shift the corners so each target becomes the origin of the whole triangle.
-    a = p1 - tri.position
-    b = p2 - tri.position
-    c = p3 - tri.position
+    a = p1 - pos
+    b = p2 - pos
+    c = p3 - pos
 
     # Find the normals of the three sub-triangles formed with each target.
     u = np.cross(b, c)
@@ -167,8 +173,8 @@ def test_target_points_rptri_basic(seed, p1, p2, p3):
     assert np.all(np.sum(u * w, axis=-1) >= 0), "points not in triangle"
 
     # Check the reflectivity is the value we set.
-    assert tri.reflectivity.shape == (N,)
-    assert np.allclose(tri.reflectivity, 0.1)
+    assert strength.shape == (N,)
+    assert np.allclose(strength, 0.1)
 
 
 def test_target_points_rptri_corner_error():
@@ -230,7 +236,8 @@ def test_target_points_rptri_reflectivity(param, expected):
     """target.points: RandomPointTriangle reflectivity settings"""
     tgt = points.RandomPointTriangle(32, [0, 0, 0], [1, 0, 0], [0, 0, 1], 5, param)
     tgt.prepare()
-    assert np.allclose(tgt.reflectivity, expected)
+    pos, strength = tgt.get_chunk(0, -1)
+    assert np.allclose(strength, expected)
 
 
 def test_target_points_rptri_repeatability():
@@ -239,16 +246,17 @@ def test_target_points_rptri_repeatability():
         1776771, [1, 2, 3], [-4.5, 2, 0.7], [1.7, -2, 1], 25, 0.06
     )
     tgt1.prepare()
+    pos1, strength1 = tgt1.get_chunk(0, -1)
 
     tgt2 = points.RandomPointTriangle(
         1776771, [1, 2, 3], [-4.5, 2, 0.7], [1.7, -2, 1], 25, 0.06
     )
-    tgt2.prepare()
+    pos2, strength2 = tgt2.get_chunk(0, -1)
 
     # Could probably use == with the position/reflectivity, but I don't trust floats.
     assert len(tgt1) == len(tgt2)
-    assert np.allclose(tgt1.position, tgt2.position)
-    assert np.allclose(tgt1.reflectivity, tgt2.reflectivity)
+    assert np.allclose(pos1, pos2)
+    assert np.allclose(strength1, strength2)
 
 
 @pytest.mark.parametrize(
@@ -262,8 +270,9 @@ def test_target_points_single(position, reflectivity):
     """target.points: SinglePoint"""
     tgt = points.SinglePoint(position, reflectivity)
     tgt.prepare()
+    pos, strength = tgt.get_chunk(0, -1)
     assert len(tgt) == 1
-    assert tgt.position.shape == (1, 3)
-    assert tgt.reflectivity.shape == (1,)
-    assert np.allclose(tgt.position, position)
-    assert np.allclose(tgt.reflectivity, reflectivity)
+    assert pos.shape == (1, 3)
+    assert strength.shape == (1,)
+    assert np.allclose(pos, position)
+    assert np.allclose(strength, reflectivity)

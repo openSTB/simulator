@@ -350,19 +350,37 @@ class PointTargets(Target):
 
     @abstractmethod
     def __len__(self) -> int:
-        """The number of point targets."""
+        """The number of point targets representing the object."""
         pass
 
-    @property
     @abstractmethod
-    def position(self) -> np.ndarray:
-        """An Nx3 array of the position of each point target."""
-        pass
+    def get_chunk(self, start_index: int, count: int) -> tuple[np.ndarray, np.ndarray]:
+        """Get a chunk of the point targets.
 
-    @property
-    @abstractmethod
-    def reflectivity(self) -> np.ndarray:
-        """An Nx1 array of the amplitude scale factor used to model scattering."""
+        For efficiency, the point targets can be accessed in chunks. This access may be
+        in random order (a user could request targets 10 to 20 and then 0 to 10), may
+        request the same chunk multiple times, and may use different size chunks for
+        different requests.
+
+        An implementation of this plugin may decide to cache the values. This should
+        only be performed for relatively small sets of targets.
+
+        Parameters
+        ----------
+        start_index
+            The index of the first target to be retrieved.
+        count
+            The number of targets to be retrieved. A value of -1 requests all targets
+            from start_index to the final target.
+
+        Returns
+        -------
+        position : np.ndarray
+            An (N, 3) array with the position of each of the targets.
+        reflectivity : np.ndarray
+            An (N, 1) array with the amplitude scale factor for the scattering.
+
+        """
         pass
 
 
