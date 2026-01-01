@@ -7,10 +7,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "openstb-simulator"
-description = "SONAR simulator"
+description = "Open-source sonar simulation toolbox"
 dynamic = ["version"]
 
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 dependencies = [
   "click",
   "cryptography",
