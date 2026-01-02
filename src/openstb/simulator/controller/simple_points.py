@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
-from collections.abc import Sequence
+from collections.abc import Iterator
 from dataclasses import dataclass
 import logging
 import os
@@ -12,7 +12,6 @@ from typing import Any, MutableMapping, NotRequired, TypedDict, cast
 from dask.tokenize import tokenize
 import distributed
 import numpy as np
-from numpy.typing import NDArray
 import zarr
 
 from openstb.i18n.support import translations
@@ -97,13 +96,51 @@ class CommonSettings:
     distortion: list[abc.Distortion]
 
 
+def _target_chunk_iterator(
+    targets: list[abc.PointTargets],
+    points_per_chunk: int,
+) -> Iterator[tuple[int, int, np.ndarray, np.ndarray]]:
+    """Iterator over all available target chunks.
+
+    Parameters
+    ----------
+    targets
+        The targets to simulate.
+    points_per_chunk
+        How many points to simulate in each chunk.
+
+    Returns
+    -------
+    target_idx : int
+        The zero-based index of the target in the input list.
+    chunk_idx : int
+        The zero-based index (within the original target) of the first point in the
+        chunk.
+    position : np.ndarray
+        An (N, 3) array of the position of the points in the chunk.
+    reflectivity : np.ndarray
+        An (N,) array of the reflectivity of the points in the chunk.
+
+    """
+    for idx, target in enumerate(targets):
+        N = len(target)
+        for n in range(0, N, points_per_chunk):
+            if (n + points_per_chunk) < N:
+                count = points_per_chunk
+            else:
+                count = -1
+
+            yield idx, n, *target.get_chunk(n, count)
+
+
 def _point_simulation_chunk(
-    common: CommonSettings,
-    targets: np.ndarray,
+    position: np.ndarray,
+    reflectivity: np.ndarray,
     ping_time: float,
     rx_position: np.ndarray,
     rx_ori: np.ndarray,
     rx_distortion: list[abc.Distortion],
+    common: CommonSettings,
     max_t: float,
 ) -> np.ndarray:
     """Simulation of a chunk of receivers and/or targets."""
@@ -116,7 +153,7 @@ def _point_simulation_chunk(
         common.tx_ori,
         rx_position.reshape(1, 3),
         rx_ori.reshape(1, 4),
-        targets[:, :3],
+        position,
     )
 
     # Start with the transmitted spectrum.
@@ -141,7 +178,7 @@ def _point_simulation_chunk(
     Schunk *= (tt_result.travel_time <= max_t)[:, np.newaxis, :]
 
     # Scale by the reflectivity of the target.
-    Schunk *= targets[:, 3]
+    Schunk *= reflectivity
 
     # Apply each receive distortion.
     for distortion in rx_distortion:
@@ -192,7 +229,7 @@ def _point_simulation_store(
 
     if update:
         with distributed.Lock("write-pressure"):
-            storage[ping, receiver, :] += result
+            storage[ping, receiver, :] += result  # type:ignore[operator]
     else:
         storage[ping, receiver, :] = result
 
@@ -215,7 +252,7 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
 
         result = r1 + r2 + r3 + r4 + r5 + r6 + f7 + r8
 
-    we compute it as
+    we might compute it as
 
         result = ((r1 + r2) + (r3 + r4)) + ((r5 + r6) + (r7 + r8))
 
@@ -228,35 +265,39 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
     def __init__(
         self,
         result_filename: os.PathLike[str] | str,
-        targets_per_chunk: int,
+        points_per_chunk: int,
         sample_rate: float,
         baseband_frequency: float,
         max_samples: int | None = None,
-        task_threshold: float = 2.0,
-        reduction_node_size: int = 3,
+        task_lower_threshold: float = 2.0,
+        task_upper_threshold: float = 3.0,
+        reduction_node_count: int = 3,
     ):
         """
         Parameters
         ----------
-        result_filename : path-like
+        result_filename
             Filename to store the results under. If this already exists, an exception
             will be raised.
-        targets_per_chunk : int
-            The maximum number of targets to simulate in each chunk.
-        sample_rate : float
+        points_per_chunk
+            The maximum number of point targets to simulate in each chunk.
+        sample_rate
             Sampling rate in Hertz of the results.
-        baseband_frequency : float
+        baseband_frequency
             Frequency used for downconversion during basebanding (carrier frequency).
-        max_sample : int, optional
+        max_samples
             The maximum number of samples each receiver will capture per ping. If not
             given, this is calculated from the maximum interval between pings and the
-            sampling rate.
-        task_threshold : float
-            Ensure that there are at least this many simulation tasks for each worker in
-            the scheduler. This does not include task to sum the results from different
-            chunks or to store the results.
-        reduction_node_size : int
-            How many
+            sampling rate. The maximum length of the trace in seconds can be found by
+            dividing `max_samples` by `sample_rate`.
+        task_lower_threshold
+            When the number of simulation tasks per worker in the scheduler drops below
+            this value, add more tasks.
+        task_upper_threshold
+            When submitting simulation tasks to the scheduler, add enough to ensure
+            there are at least this many per worker.
+        reduction_node_count
+            How many results to sum at each level of the reduction tree.
 
         """
         # Do not overwrite existing results.
@@ -264,64 +305,39 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         if self.result_filename.exists():
             raise ValueError(_("specified output path already exists"))
 
-        self.targets_per_chunk = targets_per_chunk
+        # Basic parameter checks.
+        if points_per_chunk < 1:
+            raise ValueError(_("points per chunk must be at least one"))
+        if sample_rate < 1:
+            raise ValueError(_("sample rate must be at least one"))
+        if baseband_frequency < 0:
+            raise ValueError(_("baseband frequency cannot be negative"))
+        if reduction_node_count < 2:
+            raise ValueError(_("reduction node count must be at least two"))
+
+        # If given, max samples must be given.
+        if max_samples is not None and max_samples < 1:
+            raise ValueError(_("max samples must be at least one"))
+
+        # Ensure thresholds are valid.
+        if task_lower_threshold < 1:
+            raise ValueError(_("task lower threshold must be at least one"))
+        if task_upper_threshold < task_lower_threshold:
+            raise ValueError(
+                _("task upper threshold cannot be less than lower threshold")
+            )
+
+        self.points_per_chunk = points_per_chunk
         self.sample_rate = sample_rate
         self.baseband_frequency = baseband_frequency
         self.max_samples = max_samples
-        self.task_threshold = task_threshold
-        self.reduction_node_size = reduction_node_size
+        self.task_lower_threshold = task_lower_threshold
+        self.task_upper_threshold = task_upper_threshold
+        self.reduction_node_count = reduction_node_count
 
     @property
     def config_class(self):
         return SimplePointConfig
-
-    def _submit(
-        self,
-        client: distributed.Client,
-        config: SimplePointConfig,
-        common: CommonSettings,
-        ping: int,
-        ping_time: float,
-        receiver: int,
-        max_t: float,
-        targets: Sequence[distributed.Future | NDArray],
-        reduction_node_size: int,
-    ) -> tuple[list[distributed.Future], distributed.Future]:
-        sim_futures = [
-            client.submit(
-                _point_simulation_chunk,
-                common,
-                targets=chunk,
-                ping_time=ping_time,
-                rx_position=config["receivers"][receiver].position,
-                rx_ori=config["receivers"][receiver].orientation.ndarray,
-                rx_distortion=config["receivers"][receiver].distortion,
-                max_t=max_t,
-            )
-            for chunk in targets
-        ]
-
-        # No reduction tree; sum all pieces at once.
-        if reduction_node_size <= 1:
-            key = f"result-sum-{tokenize(sim_futures)}"
-            summed = client.submit(np.sum, sim_futures, axis=0, key=key)
-            return sim_futures, summed
-
-        # Generate a sum reduction tree with each branch combining N chunks.
-        tree_futures = sim_futures
-        while len(tree_futures) > 1:
-            new_futures = []
-            for i in range(0, len(tree_futures), reduction_node_size):
-                tmp = tree_futures[i : i + reduction_node_size]
-                if len(tmp) == 1:
-                    new_futures.append(tmp[0])
-                else:
-                    key = f"reducing-sum-{tokenize(tmp)}"
-                    new_futures.append(client.submit(np.sum, tmp, axis=0, key=key))
-                del tmp
-            tree_futures = new_futures
-
-        return sim_futures, tree_futures[0]
 
     def run(self, config: SimplePointConfig):
         logger = logging.getLogger(__name__)
@@ -352,8 +368,10 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         else:
             Ns = self.max_samples
 
-        # Add a guard band. This means the echo of a target close to the end of the
-        # maximum range will not wrap round to the start of the trace.
+        # We will add a guard band during the simulation. This means the echo of a
+        # target close to the end of the maximum range will not wrap round to the start
+        # of the trace. The samples in the guard band will be discarded before the trace
+        # is saved. We add a factor of 1.1 to account for distortions.
         gb_size = int(np.ceil(config["signal"].duration * 1.1 * self.sample_rate))
 
         # Calculate the corresponding sample times and evaluate the signal.
@@ -364,46 +382,58 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
             config["signal"].maximum_frequency,
         )
 
-        # The bulk of the simulation is carried out in the frequency domain.
-        f = np.fft.fftshift(np.fft.fftfreq(Ns + gb_size, 1 / self.sample_rate))
-        S = np.fft.fftshift(np.fft.fft(s))
-
         # Prepare the targets.
-        N_targets = 0
+        N_points = 0
         for target in config["targets"]:
             target.prepare()
-            N_targets += len(target)
-        if N_targets == 0:
+            N_points += len(target)
+        if N_points == 0:
             raise ValueError(_("no targets to simulate"))
+
+        # Prepare the output storage. We checked it was non-existent in __init__,
+        # but check again in case the path has been created in the meantime.
+        if self.result_filename.exists():
+            raise ValueError(_("specified output path already exists"))
+        local_store = zarr.storage.LocalStore(self.result_filename)
+        storage = zarr.create_group(store=local_store)
+
+        # Use a default value of zero for the pressure. This does not write zero to the
+        # chunks, but sets it as a default if accessed (e.g., to add a result).
+        pressure = storage.zeros(
+            name="pressure", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
+        )
+
+        # Add the sample time and ping times.
+        st = storage.empty(name="sample_time", shape=(Ns,), chunks=(Ns,), dtype="f8")
+        st[:] = t[:Ns]
+        pst = storage.empty(
+            name="ping_start_time", shape=(Np,), chunks=(Np,), dtype="f8"
+        )
+        pst[:] = ping_start
+
+        # Add some metadata.
+        storage.attrs["baseband_frequency"] = self.baseband_frequency
+        storage.attrs["sample_rate"] = self.sample_rate
 
         logger.info(
             _(
                 "Simulation size: %(Np)d pings, %(Nr)d receivers, %(Ns)d samples per "
-                "trace, %(Nt)d targets"
+                "trace, %(Nt)d point targets"
             ),
-            {"Np": Np, "Nr": Nr, "Ns": Ns, "Nt": N_targets},
+            {"Np": Np, "Nr": Nr, "Ns": Ns, "Nt": N_points},
         )
 
-        # Combine into an array of position and reflectivity.
-        targets = np.empty((N_targets, 4), dtype=float)
-        start = 0
-        for target in config["targets"]:
-            position, reflectivity = target.get_chunk(0, -1)
-            targets[start : start + len(target), :3] = position
-            targets[start : start + len(target), 3] = reflectivity
-            start += len(target)
+        # The bulk of the simulation is carried out in the frequency domain.
+        f = np.fft.fftshift(np.fft.fftfreq(Ns + gb_size, 1 / self.sample_rate))
+        S = np.fft.fftshift(np.fft.fft(s))
 
         # Prepare the cluster.
         logger.info(_("Initialising Dask cluster"))
         config["dask_cluster"].initialise()
         client = config["dask_cluster"].client
 
-        # Split the targets into chunks and distribute.
-        N_chunks = int(np.ceil(N_targets / self.targets_per_chunk))
-        chunks = np.array_split(targets, N_chunks)
-        chunks = client.scatter(chunks, broadcast=False)
-
-        # Collate and send common details to all workers.
+        # Collate settings that are common for every chunk of the simulation and
+        # broadcast it to all workers.
         logger.info(_("Sending common details to cluster workers"))
         distortion = config["transmitter"].distortion + config.get("distortion", [])
         common = client.scatter(
@@ -422,108 +452,73 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
             broadcast=True,
         )
 
-        # Prepare the output storage. We checked it was non-existent in __init__,
-        # but check again in case the path has been created in the meantime.
-        if self.result_filename.exists():
-            raise ValueError(_("specified output path already exists"))
-        local_store = zarr.storage.LocalStore(self.result_filename)
-        storage = zarr.create_group(store=local_store)
+        # Turn the submission thresholds into integers.
+        Nworkers = len(client.scheduler_info(n_workers=-1)["workers"])
+        lower_threshold = int(np.ceil(Nworkers * self.task_lower_threshold))
+        upper_threshold = int(np.ceil(Nworkers * self.task_upper_threshold))
 
-        # Use a default value of zero for the pressure. This does not write zero to the
-        # chunks, but sets it as a default if accessed (e.g., to add a result).
-        pressure = storage.zeros(
-            name="pressure", shape=(Np, Nr, Ns), chunks=(1, 1, Ns), dtype="c16"
-        )
-
-        # Add the sample time and ping times.
-        st = storage.empty(name="sample_time", shape=(Ns,), chunks=(Ns,), dtype="f8")
-        st[:] = t
-        pst = storage.empty(
-            name="ping_start_time", shape=(Np,), chunks=(Np,), dtype="f8"
-        )
-        pst[:] = ping_start
-
-        # Add some metadata.
-        storage.attrs["baseband_frequency"] = self.baseband_frequency
-        storage.attrs["sample_rate"] = self.sample_rate
-
-        # Futures for simulation tasks that have not yet completed.
-        sim_futures: set[distributed.Future] = set()
-
-        # Futures for result store tasks that have not yet completed.
-        store_futures: set[distributed.Future] = set()
+        # Initialise our state variables.
+        self.tasks: set[distributed.Future] = set()
+        self.ping = 0
+        self.receiver = 0
+        self.target_iter: None | Iterator = None
+        self.to_reduce: list[distributed.Future] = []
+        self.sim_tasks = 0
 
         logger.info(_("Beginning simulation"))
-        for ping in range(Np):
-            logger.info(_("Starting submission of jobs for ping %(N)d"), {"N": ping})
-            for receiver in range(Nr):
-                # Number of simulation tasks we should aim for. We update this here in
-                # case workers are added to or removed from the cluster.
-                Nworkers = len(client.scheduler_info()["workers"])
-                threshold = Nworkers * self.task_threshold
 
-                # Wait until the number of simulation futures are below this.
-                while len(sim_futures) > threshold:
-                    res = distributed.wait(sim_futures, return_when="FIRST_COMPLETED")
-                    sim_futures = set(res.not_done)
+        # Submit the first set of tasks.
+        self._submit_tasks(
+            upper_threshold,
+            client,
+            config,
+            ping_start=ping_start,
+            store_var=pressure,
+            guard_band_size=gb_size,
+            max_t=Ns / self.sample_rate,
+            common=common,
+        )
 
-                    # Check for failures in any completed futures.
-                    for future in res.done:
-                        if future.status == "error":
-                            raise future.exception()
-                        if future.status == "cancelled":
-                            raise RuntimeError(_("a future was cancelled"))
+        # And loop until all tasks are complete.
+        while self.tasks:
+            # If the number of tasks has dropped under our lower threshold, add more.
+            if self.sim_tasks < lower_threshold:
+                # Update the number of workers (they may be added to or removed from the
+                # cluster dynamically). We don't need to do this every loop; every time
+                # we think we need to add tasks should be often enough.
+                Nworkers = len(client.scheduler_info(n_workers=-1)["workers"])
+                lower_threshold = int(np.ceil(Nworkers * self.task_lower_threshold))
+                upper_threshold = int(np.ceil(Nworkers * self.task_upper_threshold))
 
-                    # Drop references to any store commands that have completed. This
-                    # allows the scheduler to remove them and the tasks that they
-                    # depended on.
-                    store_futures = {f for f in store_futures if not f.done()}
+                to_add = upper_threshold - self.sim_tasks
+                if to_add > 0:
+                    self._submit_tasks(
+                        to_add,
+                        client,
+                        config,
+                        ping_start=ping_start,
+                        store_var=pressure,
+                        guard_band_size=gb_size,
+                        max_t=Ns / self.sample_rate,
+                        common=common,
+                    )
 
-                # Add simulation and reduction tasks for this ping-receiver pair.
-                sim, reduced = self._submit(
-                    client,
-                    config,
-                    common,
-                    ping,
-                    ping_start[ping],
-                    receiver,
-                    Ns / self.sample_rate,
-                    chunks,
-                    reduction_node_size=self.reduction_node_size,
-                )
-                sim_futures.update(sim)
+            # Wait for something to complete.
+            res = distributed.wait(self.tasks, return_when="FIRST_COMPLETED")
+            self.tasks = res.not_done
 
-                # Add a task to store the reduced result.
-                store = client.submit(
-                    _point_simulation_store,
-                    pressure,
-                    reduced,
-                    gb_size,
-                    ping,
-                    receiver,
-                    key=f"store-result-{ping}-{receiver}",
-                )
-                store_futures.add(store)
+            # Check for failures in the completed tasks.
+            for future in res.done:
+                if future.key.startswith("simulate-"):
+                    self.sim_tasks -= 1
 
-                # We don't want to keep these references locally.
-                del reduced
-                del store
+                if future.status == "error":
+                    raise future.exception()
+                if future.status == "cancelled":
+                    raise RuntimeError(_("a future was cancelled"))
 
-        # Remove our references to the data and settings we scattered at the start. The
-        # scheduler can then remove them when no tasks using them remain.
-        del chunks
+        # The simulation has completed. Remove the scattered data.
         del common
-
-        # Tasks for all pings and receivers have been submitted. Wait until the results
-        # have been written to disk.
-        res = distributed.wait(store_futures)
-        for future in res.done:
-            if future.status == "error":
-                raise future.exception()
-            if future.status == "cancelled":
-                raise RuntimeError(_("a future was cancelled"))
-        del store_futures
-        logger.info(_("Simulation complete"))
 
         if "result_converter" in config:
             logger.info(_("Passing results to result converter"))
@@ -541,3 +536,119 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
                     ),
                     self.result_filename,
                 )
+
+    def _submit_tasks(
+        self,
+        count: int,
+        client: distributed.Client,
+        config: SimplePointConfig,
+        ping_start: np.ndarray,
+        store_var: zarr.Array,
+        guard_band_size: int,
+        **sim_kwargs,
+    ):
+        """Submit simulation tasks to a cluster.
+
+        Parameters
+        ----------
+        count
+            The number of simulation tasks to add.
+        client
+            The Dask client to submit tasks to.
+        config
+            The simulation configuration.
+        ping_start
+            The start time of each ping.
+        store_var
+            The Zarr variable to store results under.
+        guard_band_size
+            The size (in number of samples) of the guard band used during simulation.
+
+        """
+        logger = logging.getLogger(__name__)
+
+        # No more pings left to simulate.
+        if self.ping == -1:
+            return
+
+        # Have completed a ping+receiver, reset the target iterator for the next.
+        if self.target_iter is None:
+            self.target_iter = _target_chunk_iterator(
+                config["targets"], self.points_per_chunk
+            )
+            logger.info(
+                _("Starting submission of tasks for ping %(P)d receiver %(R)d"),
+                {"P": self.ping, "R": self.receiver},
+            )
+
+        # Add the simulation tasks.
+        rx = config["receivers"][self.receiver]
+        t = ping_start[self.ping]
+        for n in range(count):
+            try:
+                target_idx, chunk_idx, pos, refl = next(self.target_iter)
+            except StopIteration:
+                self.target_iter = None
+                break
+
+            future = client.submit(
+                _point_simulation_chunk,
+                pos,
+                refl,
+                key=f"simulate-{target_idx}-{chunk_idx}-{self.ping}-{self.receiver}",
+                ping_time=t,
+                rx_position=rx.position,
+                rx_ori=rx.orientation.ndarray,
+                rx_distortion=rx.distortion,
+                **sim_kwargs,
+            )
+            self.tasks.add(future)
+            self.sim_tasks += 1
+            self.to_reduce.insert(0, future)
+
+        # Generate reduction tree tasks to combine the results we currently have.
+        while len(self.to_reduce) >= self.reduction_node_count:
+            new_futures = []
+            for i in range(0, len(self.to_reduce), self.reduction_node_count):
+                tmp = self.to_reduce[i : i + self.reduction_node_count]
+                if len(tmp) < self.reduction_node_count:
+                    new_futures.extend(tmp)
+                else:
+                    key = f"reducing-sum-{tokenize(tmp)}"
+                    future = client.submit(np.sum, tmp, axis=0, key=key, priority=5)
+                    new_futures.append(future)
+                    self.tasks.add(future)
+                del tmp
+            self.to_reduce = new_futures
+
+        # If we have exhausted the target iterator, we have submitted all tasks for this
+        # ping/receiver pair. Add a task to sum the final sets of results and store.
+        if self.target_iter is None:
+            if len(self.to_reduce) > 1:
+                key = f"reducing-sum-{tokenize(self.to_reduce)}"
+                result = client.submit(np.sum, self.to_reduce, axis=0, key=key)
+                self.tasks.add(result)
+                self.to_reduce.clear()
+            else:
+                result = self.to_reduce.pop()
+
+            self.tasks.add(
+                client.submit(
+                    _point_simulation_store,
+                    store_var,
+                    result,
+                    guard_band_size,
+                    self.ping,
+                    self.receiver,
+                    key=f"store-result-{self.ping}-{self.receiver}",
+                    priority=10,
+                )
+            )
+
+            # Move on to the next ping+receiver to simulate.
+            self.receiver += 1
+            if self.receiver >= len(config["receivers"]):
+                self.receiver = 0
+                self.ping += 1
+                if self.ping >= len(ping_start):
+                    self.ping = -1
