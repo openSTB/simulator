@@ -82,6 +82,32 @@ def test_random_chunked_rng_boundary():
     assert np.allclose(repeat, samples)
 
 
+def test_random_chunked_rng_earlier_block():
+    """random.ChunkedRNG: can generate from earlier blocks"""
+    # Create an instance with smaller blocks for testing.
+    rng = random.ChunkedRNG(641980176141, "uniform", 2)
+    rng._block_size = 500
+
+    # Request samples from three blocks.
+    assert len(rng._block_rng) == 0
+    rng.sample(250, 1221)
+    assert len(rng._block_rng) == 3
+
+    # Now ensure we can still sample from blocks before the last. We do this several
+    # times; an earlier bug would try to call rng.spawn() with negative numbers which
+    # seems to return empty lists initially and raise exceptions on subsequent calls.
+    rng.sample(0, 250)
+    rng.sample(500, 250)
+    rng.sample(0, 250)
+    rng.sample(500, 250)
+    rng.sample(0, 250)
+    rng.sample(500, 250)
+    rng.sample(0, 250)
+    rng.sample(500, 250)
+    rng.sample(0, 250)
+    rng.sample(500, 250)
+
+
 @gen_cluster(client=True)
 async def test_random_chunked_rng_dask(c, s, a, b):
     """random.ChunkedRNG: can be used in parallel operations with Dask"""

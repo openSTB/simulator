@@ -183,7 +183,7 @@ class ChunkedRNG:
         # Ensure we have spawned RNGs for these blocks.
         with self._base_lock:
             missing = stop_idx - len(self._block_rng)
-            if missing:
+            if missing > 0:
                 self._block_rng.extend(
                     _BlockRNG(subrng, self.method, self.samples_per_item)
                     for subrng in self._base_rng.spawn(missing)
