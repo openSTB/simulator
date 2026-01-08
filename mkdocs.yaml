@@ -50,7 +50,10 @@ plugins:
             - url: https://docs.python.org/3/objects.inv
               domains: [py, std]
             - https://numpy.org/doc/stable/objects.inv
-            - https://docs.dask.org/en/stable/objects.inv
+            - url: https://docs.dask.org/en/stable/objects.inv
+              domains: [py, std]
+            - url: https://distributed.dask.org/en/stable/objects.inv
+              domains: [py, std]
           options:
             docstring_section_style: table
             docstring_style: "numpy"
@@ -67,8 +70,13 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - pymdownx.arithmatex:
+      generic: true
   - pymdownx.snippets
   - pymdownx.superfences
+
+extra_javascript:
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 watch:
   - src
@@ -77,7 +85,12 @@ nav:
   - index.md
   - Getting started:
     - getting_started/install.md
-  - Examples:
-    - examples/simple_points.md
-  - Included plugins:
+    - Examples:
+      - examples/simple_points.md
+  - Plugins:
+    - plugins/index.md
     - included_plugins/index.md
+    - Controller:
+      - Overview: plugins/controller/overview.md
+      - plugins/controller/simple_points.md
+      - plugins/controller/interface.md
