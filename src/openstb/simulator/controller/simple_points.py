@@ -197,41 +197,42 @@ def _point_simulation_chunk(
 
 
 def _point_simulation_store(
-    storage: zarr.Array,
-    result_fdomain: np.ndarray,
-    guard_band_size: int,
-    ping: int,
-    receiver: int | slice,
-    update: bool = False,
+    storage: zarr.Array, ping: int, receiver: int, results_fdomain: list[np.ndarray]
 ) -> None:
     """Store the result of a piece of the simulation.
 
     Parameters
     ----------
-    result_fdomain : numpy.ndarray
-        The Fourier domain result of the simulation.
-    storage : zarr.Array
+    storage
         The zarr array to store the result in.
-    ping : int
+    ping
         The ping index of the result.
-    receiver : int, slice
-        The receiver index or indices of the result.
-    update : Boolean
-        If True, add the result to the existing value; this will use a lock to prevent
-        race issues. If False, assume only one result per index and just store it. In
-        the latter case, it is also assumed that the chunk size of the storage matches
-        the chunk size of the simulation so it is safe for multiple chunks to be
-        simultaneously written.
+    receiver
+        The receiver of the result.
+    results_fdomain
+        The Fourier domain results to add to the storage. These are summed, returned to
+        the time domain and added to the current result in the storage.
 
     """
-    # Return to the time domain and remove the guard band.
-    result = np.fft.ifft(np.fft.ifftshift(result_fdomain))[..., :-guard_band_size]
-
-    if update:
-        with distributed.Lock("write-pressure"):
-            storage[ping, receiver, :] += result  # type:ignore[operator]
+    # Combine the results, noting we may have a single-element list.
+    if len(results_fdomain) == 1:
+        result_fdomain = results_fdomain[0]
     else:
-        storage[ping, receiver, :] = result
+        result_fdomain = np.sum(results_fdomain, axis=0)
+
+    # Return to the time domain.
+    result = np.fft.ifft(np.fft.ifftshift(result_fdomain))
+
+    # Remove any guard band.
+    Nt = storage.shape[-1]
+    if Nt < result.shape[-1]:
+        result = result[..., :Nt]
+
+    if Nt > result.shape[-1]:
+        raise ValueError(_("result has fewer samples than expected"))
+
+    with distributed.Lock("write-pressure"):
+        storage[ping, receiver, :] += result  # type:ignore[operator]
 
 
 class SimplePointSimulation(abc.Controller[SimplePointConfig]):
@@ -248,7 +249,7 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
     results from a small number of chunks, allowing the initial results to be freed from
     memory. Groups of these summed results are themselves recursively summed in the same
     manner until a single combined result remains. For eight chunks and a reduction node
-    size of two, this means instead of computing the result as
+    count of two, this means instead of computing the result as
 
         result = r1 + r2 + r3 + r4 + r5 + r6 + f7 + r8
 
@@ -259,6 +260,10 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
     which has the same number of operations but allows memory to be freed earlier. Note
     that, since floating-point operations are generally not associative, these two
     results will differ by some small amount proportional to the machine precision.
+
+    This reduction will be performed for a few levels, after which the combined set of
+    results will be written to disk. The number of chunks in each write is given by
+    reduction_node_count ** reduction_levels.
 
     """
 
@@ -271,7 +276,8 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         max_samples: int | None = None,
         task_lower_threshold: float = 2.0,
         task_upper_threshold: float = 3.0,
-        reduction_node_count: int = 3,
+        reduction_node_count: int = 4,
+        reduction_levels: int = 3,
     ):
         """
         Parameters
@@ -298,6 +304,9 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
             there are at least this many per worker.
         reduction_node_count
             How many results to sum at each level of the reduction tree.
+        reduction_levels
+            How many levels to use in the reduction tree before writing the combined
+            results to disk.
 
         """
         # Do not overwrite existing results.
@@ -314,6 +323,8 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
             raise ValueError(_("baseband frequency cannot be negative"))
         if reduction_node_count < 2:
             raise ValueError(_("reduction node count must be at least two"))
+        if reduction_levels < 1:
+            raise ValueError(_("reduction levels must be at least one"))
 
         # If given, max samples must be given.
         if max_samples is not None and max_samples < 1:
@@ -334,6 +345,7 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         self.task_lower_threshold = task_lower_threshold
         self.task_upper_threshold = task_upper_threshold
         self.reduction_node_count = reduction_node_count
+        self.reduction_levels = reduction_levels
 
     @property
     def config_class(self):
@@ -462,7 +474,9 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         self.ping = 0
         self.receiver = 0
         self.target_iter: None | Iterator = None
-        self.to_reduce: list[distributed.Future] = []
+        self.to_reduce: list[list[distributed.Future]] = []
+        for i in range(self.reduction_levels):
+            self.to_reduce.append([])
         self.sim_tasks = 0
 
         logger.info(_("Beginning simulation"))
@@ -474,7 +488,6 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
             config,
             ping_start=ping_start,
             store_var=pressure,
-            guard_band_size=gb_size,
             max_t=Ns / self.sample_rate,
             common=common,
         )
@@ -498,7 +511,6 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
                         config,
                         ping_start=ping_start,
                         store_var=pressure,
-                        guard_band_size=gb_size,
                         max_t=Ns / self.sample_rate,
                         common=common,
                     )
@@ -517,8 +529,12 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
                 if future.status == "cancelled":
                     raise RuntimeError(_("a future was cancelled"))
 
-        # The simulation has completed. Remove the scattered data.
+            del res
+            del future
+
+        # The simulation has completed. Remove the common data.
         del common
+        logger.info(_("Simulation complete"))
 
         if "result_converter" in config:
             logger.info(_("Passing results to result converter"))
@@ -544,7 +560,6 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         config: SimplePointConfig,
         ping_start: np.ndarray,
         store_var: zarr.Array,
-        guard_band_size: int,
         **sim_kwargs,
     ):
         """Submit simulation tasks to a cluster.
@@ -561,8 +576,6 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
             The start time of each ping.
         store_var
             The Zarr variable to store results under.
-        guard_band_size
-            The size (in number of samples) of the guard band used during simulation.
 
         """
         logger = logging.getLogger(__name__)
@@ -604,46 +617,13 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
             )
             self.tasks.add(future)
             self.sim_tasks += 1
-            self.to_reduce.insert(0, future)
 
-        # Generate reduction tree tasks to combine the results we currently have.
-        while len(self.to_reduce) >= self.reduction_node_count:
-            new_futures = []
-            for i in range(0, len(self.to_reduce), self.reduction_node_count):
-                tmp = self.to_reduce[i : i + self.reduction_node_count]
-                if len(tmp) < self.reduction_node_count:
-                    new_futures.extend(tmp)
-                else:
-                    key = f"reducing-sum-{tokenize(tmp)}"
-                    future = client.submit(np.sum, tmp, axis=0, key=key, priority=5)
-                    new_futures.append(future)
-                    self.tasks.add(future)
-                del tmp
-            self.to_reduce = new_futures
+            self._reduce_and_store(client, store_var, future)
 
-        # If we have exhausted the target iterator, we have submitted all tasks for this
-        # ping/receiver pair. Add a task to sum the final sets of results and store.
+        # We have finished this ping+receiver pair.
         if self.target_iter is None:
-            if len(self.to_reduce) > 1:
-                key = f"reducing-sum-{tokenize(self.to_reduce)}"
-                result = client.submit(np.sum, self.to_reduce, axis=0, key=key)
-                self.tasks.add(result)
-                self.to_reduce.clear()
-            else:
-                result = self.to_reduce.pop()
-
-            self.tasks.add(
-                client.submit(
-                    _point_simulation_store,
-                    store_var,
-                    result,
-                    guard_band_size,
-                    self.ping,
-                    self.receiver,
-                    key=f"store-result-{self.ping}-{self.receiver}",
-                    priority=10,
-                )
-            )
+            # Ensure the final tasks are summed and saved.
+            self._reduce_and_store(client, store_var, None)
 
             # Move on to the next ping+receiver to simulate.
             self.receiver += 1
@@ -652,3 +632,70 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
                 self.ping += 1
                 if self.ping >= len(ping_start):
                     self.ping = -1
+
+    def _reduce_and_store(
+        self,
+        client: distributed.Client,
+        store_var: zarr.Array,
+        new_task: distributed.Future | None,
+    ):
+        """Generation reduction tree and store tasks.
+
+        Parameters
+        ----------
+        client
+            The Dask client to submit tasks to.
+        store_var
+            The array to store results in.
+        new_task
+            A new simulation task to add to a reduction tree. If None, sum all tasks
+            currently in the reduction tree and store. This can be used to flush the
+            tree at the end of the simulation tasks for a ping+receiver pair.
+
+        """
+        future = new_task
+
+        for i in range(self.reduction_levels):
+            # Store any given future at this level.
+            if future is not None:
+                self.to_reduce[i].append(future)
+
+            # If we are still adding tasks, check if we have enough futures at this
+            # level to sum up and move to the next.
+            if new_task is not None:
+                if len(self.to_reduce[i]) < self.reduction_node_count:
+                    break
+
+            # There are no more tasks for this ping. Check if there are any remaining
+            # futures at this level.
+            else:
+                if not self.to_reduce[i]:
+                    future = None
+                    continue
+
+            # Sum all results at this level and store if this is the final level.
+            inputs = list(self.to_reduce[i])
+            self.to_reduce[i].clear()
+            if i == (self.reduction_levels - 1):
+                key = f"store-result-{self.ping}-{self.receiver}-{tokenize(future)}"
+                self.tasks.add(
+                    client.submit(
+                        _point_simulation_store,
+                        store_var,
+                        self.ping,
+                        self.receiver,
+                        inputs,
+                        priority=i,
+                        key=key,
+                    )
+                )
+
+            else:
+                # At the end of the ping+receiver pair, we may have a single result
+                # which we can pass directly on to the next level.
+                if len(inputs) > 1:
+                    key = f"reducing-sum-{tokenize(inputs)}"
+                    future = client.submit(np.sum, inputs, axis=0, key=key, priority=i)
+                    self.tasks.add(future)
+                else:
+                    future = inputs[0]
