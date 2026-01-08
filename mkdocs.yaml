@@ -94,3 +94,7 @@ nav:
       - Overview: plugins/controller/overview.md
       - plugins/controller/simple_points.md
       - plugins/controller/interface.md
+  - Release notes:
+    - release_notes/v0.6.1.md
+    - release_notes/v0.6.0.md
+    - release_notes/v0.5.0.md
