@@ -5,7 +5,7 @@ import logging
 
 import dask_mpi
 import distributed
-from mpi4py import MPI
+import mpi4py  # noqa: F401 (ensure available; slow submodule imported on demand)
 
 from openstb.i18n.support import translations
 from openstb.simulator.plugin.abc import DaskCluster
@@ -72,6 +72,8 @@ class DaskMPICluster(DaskCluster):
             local_directory=self.local_directory,
         )
 
+        from mpi4py import MPI
+
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
 
@@ -108,6 +110,8 @@ class DaskMPICluster(DaskCluster):
 
     @classmethod
     def initialise_worker(cls):
+        from mpi4py import MPI
+
         comm = MPI.COMM_WORLD
 
         # Avoid misconfigurations with a clear error message.
