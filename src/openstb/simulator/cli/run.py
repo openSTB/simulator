@@ -6,7 +6,7 @@ import logging
 import click
 from rich.logging import RichHandler
 
-from openstb.simulator.plugin import loader, util
+from openstb.simulator.plugin import abc, loader, util
 
 
 @click.command
@@ -67,19 +67,19 @@ def run(config_plugin: str, config_source: str, dask_worker: str, log_level: str
         handlers=[RichHandler(rich_tracebacks=True)],
     )
 
-    loader_cls = None
-
     # Given a Dask cluster plugin which supports independent worker spawning.
     if dask_worker is not None:
+        cls: type[abc.DaskCluster]
         cls = loader.load_plugin_class("openstb.simulator.dask_cluster", dask_worker)
         if not cls.initialise_worker():
             return
 
     # Loader plugin specified; get it.
+    loader_cls: type[abc.ConfigLoader] | None = None
     if config_plugin is not None:
         loader_cls = loader.load_plugin_class(
             "openstb.simulator.config_loader", config_plugin
-        )
+        )  # type:ignore[assignment]
 
     # Not specified; try to guess it.
     else:
@@ -91,7 +91,7 @@ def run(config_plugin: str, config_source: str, dask_worker: str, log_level: str
             )
 
     # Create an instance and get the configuration dictionary.
-    config_loader = loader_cls(config_source)
+    config_loader = loader_cls(config_source)  # type:ignore[call-arg]
     config = config_loader.load()
 
     # Get the controller plugin.
