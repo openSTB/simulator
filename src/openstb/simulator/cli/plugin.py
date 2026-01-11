@@ -79,8 +79,14 @@ def _output_group(group: str, output: TextIOWrapper):
         else:
             src = "unknown plugin source"
 
+        doc = getattr(cls, "__doc__", "") or ""
+
         click.echo(f"{ep.name} ({src})", file=output)
-        click.secho(f"    {cls.__doc__.splitlines()[0]}\n", italic=True, file=output)
+        if doc:
+            doc = doc.splitlines()[0]
+            click.secho(f"    {doc}\n", italic=True, file=output)
+        else:
+            click.secho("    No description given.\n", italic=True, file=output)
 
 
 @plugin.command
@@ -189,7 +195,7 @@ def search(
         """
         # Get the strings we are searching and normalise the case if required.
         name = ep[0].name
-        doc = getattr(ep[1], "__doc__", "")
+        doc = getattr(ep[1], "__doc__", "") or ""
         if not case:
             name = name.lower()
             doc = doc.lower()
@@ -236,7 +242,10 @@ def search(
         click.secho(f"    Plugin type: {ep.group}", italic=True, file=output)
 
         # First line of the docstring if given.
-        doc = getattr(cls, "__doc__", "").splitlines()[0]
+        doc = getattr(cls, "__doc__", "") or ""
         if doc:
+            doc = doc.splitlines()[0]
             click.echo(f"    {kw_re.sub(repl, doc)}", file=output)
+        else:
+            click.echo("    No description given.", file=output)
         click.echo(file=output)
