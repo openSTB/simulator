@@ -74,6 +74,8 @@ markdown_extensions:
       generic: true
   - pymdownx.snippets
   - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
 
 extra_javascript:
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
@@ -89,6 +91,7 @@ nav:
       - examples/simple_points.md
   - Plugins:
     - plugins/index.md
+    - plugins/specifying.md
     - included_plugins/index.md
     - Controller:
       - Overview: plugins/controller/overview.md
