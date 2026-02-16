@@ -375,6 +375,10 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
 
         # Calculate the maximum number of samples we will simulate.
         if self.max_samples is None:
+            if Np == 1:
+                raise ValueError(
+                    _("max_samples must be specified for a single-ping simulation")
+                )
             max_interval = np.diff(ping_start).max()
             Ns = int(np.ceil(max_interval * self.sample_rate))
         else:
