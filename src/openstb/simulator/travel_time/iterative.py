@@ -32,10 +32,6 @@ class Iterative(TravelTime):
     transmission throughout the calculation, and assumes that the sound travels in a
     straight line to and from the targets.
 
-    Note that this plugin does not calculate any scale factors to be applied. To model
-    effects such as attenuation and spreading loss, separate plugins must be included in
-    the simulation setup.
-
     If a proposed reception time is after the end of the trajectory, an exception will
     be raised. Ensure that your ping time plugin is configured to leave a suitable gap
     between the final ping and the end of the trajectory for the echoes to return.
@@ -96,7 +92,6 @@ class Iterative(TravelTime):
         # Transmit portion.
         tx_vec = target_positions - tx_pos
         tx_pathlen = np.sqrt(np.sum(tx_vec**2, axis=-1))
-        tx_vec /= tx_pathlen[:, np.newaxis]
         tx_tt = tx_pathlen / sound_speed  # (Nt,)
 
         # Loop for the maximum number of iterations; exit if we converge sooner.
@@ -135,7 +130,13 @@ class Iterative(TravelTime):
         if not success:
             raise RuntimeError(_("could not converge to a travel time"))
 
-        # Put it all together.
+        # Normalise the vectors to give the transmit and receive directions.
+        tx_vec /= tx_pathlen[:, np.newaxis]
+        rx_vec /= rx_pathlen[:, :, np.newaxis]
+
+        # Put it all together. Note that since we are assuming the sound travels in a
+        # straight line, we use tx_vec and rx_vec for the incident and scattering
+        # vectors, respectively.
         return TravelTimeResult(
             travel_time=tt,
             tx_position=tx_pos,
@@ -143,10 +144,11 @@ class Iterative(TravelTime):
             tx_velocity=vehicle_vel0,
             tx_vector=tx_vec,
             tx_path_length=tx_pathlen,
+            incident_vector=tx_vec,
+            scattering_vector=rx_vec,
             rx_position=rx_pos_rx,
             rx_orientation=rx_orientations[:, np.newaxis] * vehicle_ori_rx,
             rx_velocity=trajectory.velocity(ping_time + tt),
-            rx_vector=rx_vec / rx_pathlen[..., np.newaxis],
+            rx_vector=rx_vec,
             rx_path_length=rx_pathlen,
-            scale_factor=None,
         )

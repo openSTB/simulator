@@ -62,6 +62,8 @@ def test_scalefactor_beampattern_rect_horizontal(frequency, tx, rx):
         tx_velocity=np.array([1.5, 0, 0]),
         tx_vector=tgt_vector[0],
         tx_path_length=np.full((1, N), 150.0),
+        incident_vector=tgt_vector[0],
+        scattering_vector=-tgt_vector,
         rx_position=np.zeros((1, N, 3)),
         rx_orientation=quaternionic.array(
             [[np.sqrt(2) / 2, 0, 0, np.sqrt(2) / 2]] * N
@@ -118,6 +120,8 @@ def test_scalefactor_beampattern_rect_vertical(frequency, tx, rx):
         tx_orientation=quaternionic.array([np.sqrt(2) / 2, 0, 0, np.sqrt(2) / 2]),
         tx_velocity=np.array([1.5, 0, 0]),
         tx_vector=tgt_vector[0],
+        incident_vector=tgt_vector[0],
+        scattering_vector=-tgt_vector,
         tx_path_length=np.full((1, N), 150.0),
         rx_position=np.zeros((1, N, 3)),
         rx_orientation=quaternionic.array(
@@ -165,6 +169,8 @@ def test_scalefactor_beampattern_rect_both():
         tx_orientation=quaternionic.array([np.sqrt(2) / 2, 0, 0, np.sqrt(2) / 2]),
         tx_velocity=np.array([1.5, 0, 0]),
         tx_vector=tgt_vector[0],
+        incident_vector=tgt_vector[0],
+        scattering_vector=-tgt_vector,
         tx_path_length=np.full((1, N), 150.0),
         rx_position=np.zeros((1, N, 3)),
         rx_orientation=quaternionic.array(

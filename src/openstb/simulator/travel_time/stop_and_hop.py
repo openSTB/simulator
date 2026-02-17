@@ -19,9 +19,9 @@ _ = translations.load("openstb.simulator").gettext
 class StopAndHop(TravelTime):
     """Travel time calculated using the stop-and-hop approximation.
 
-    Note that this plugin does not calculate any scale factors to be applied. To model
-    effects such as attenuation and spreading loss, separate plugins must be included in
-    the simulation setup.
+    This assumes that the system does not move between transmission and reception. The
+    sound is assumed to travel in straight lines from the transmitter to the targets and
+    back to the receivers.
 
     """
 
@@ -69,6 +69,8 @@ class StopAndHop(TravelTime):
         tx_vec /= tx_pathlen[:, np.newaxis]
         rx_vec /= rx_pathlen[:, :, np.newaxis]
 
+        # Note that since we are assuming the sound travels in a straight line, we use
+        # tx_vec and rx_vec for the incident and scattering vectors, respectively.
         return TravelTimeResult(
             travel_time=tt,
             tx_position=tx_pos,
@@ -76,10 +78,11 @@ class StopAndHop(TravelTime):
             tx_velocity=vehicle_vel,
             tx_vector=tx_vec,
             tx_path_length=tx_pathlen,
+            incident_vector=tx_vec,
+            scattering_vector=rx_vec,
             rx_position=rx_pos,
             rx_orientation=rx_ori,
             rx_velocity=rx_vel,
             rx_vector=rx_vec,
             rx_path_length=rx_pathlen,
-            scale_factor=None,
         )

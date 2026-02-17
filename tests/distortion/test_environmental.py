@@ -28,6 +28,8 @@ def test_scalefactor_environmental_geospreading(power, N_rx, N_tgt):
         tx_orientation=quaternionic.array([np.sqrt(2) / 2, 0, 0, np.sqrt(2) / 2]),
         tx_velocity=np.array([1.5, 0, 0]),
         tx_vector=tgt_vector[0],
+        incident_vector=tgt_vector[0],
+        scattering_vector=-tgt_vector,
         tx_path_length=r_tx,
         rx_position=np.zeros((1, N_tgt, 3)),
         rx_orientation=quaternionic.array(
@@ -86,6 +88,8 @@ def test_scalefactor_environmental_ansliemccolm(freqmode, T, S, pH, z, f, alpha)
         tx_orientation=quaternionic.array([np.sqrt(2) / 2, 0, 0, np.sqrt(2) / 2]),
         tx_velocity=np.array([1.5, 0, 0]),
         tx_vector=tgt_vector[0],
+        incident_vector=tgt_vector[0],
+        scattering_vector=-tgt_vector,
         tx_path_length=r_tx,
         rx_position=np.zeros((N_rx, N_tgt, 3)),
         rx_orientation=quaternionic.array(

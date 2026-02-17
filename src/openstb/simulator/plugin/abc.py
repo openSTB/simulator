@@ -508,56 +508,113 @@ class TravelTimeResult:
 
     """
 
-    #: An array of shape (N_receivers, N_targets) containing the two-way travel time in
-    #: seconds for the pulse to travel from the transmitter to each target and then back
-    #: to each target.
     travel_time: np.ndarray
+    """Two-way travel time in seconds.
 
-    #: An array of shape (3,) with the position of the transmitter in global coordinates
-    #: when the transmission started.
+    This is a two-dimensional array of shape (N_receivers, N_targets) containing the
+    time taken for the pulse to travel from the transmitter to each target and then back
+    to each receiver.
+
+    """
+
     tx_position: np.ndarray
+    """Position of the transmitter when transmission started.
 
-    #: A quaternion array of shape (4,) with the orientation of the transmitter in the
-    #: global system when the transmission started.
+    This is a vector of length 3 with the position in global coordinates.
+
+    """
+
     tx_orientation: quaternionic.QArray
+    """Orientation of the transmitter when transmission started.
 
-    #: An array of shape (3,) with velocity vectors of the sonar in the global system
-    #: at the time the transmission started.
+    This is a single quaternion (a vector of length 4) giving the rotation from the
+    global x axis to the normal of the transmitter.
+
+    """
+
     tx_velocity: np.ndarray
+    """Velocity of the transmitter when transmission started.
 
-    #: An array of shape (N_targets, 3) with unit vectors in the global coordinate
-    #: system for the direction the pulse left the transmitter at to reach each target.
+    This is a vector of length 3 giving the velocity in global coordinates.
+
+    """
+
     tx_vector: np.ndarray
+    """Direction of transmission for each target.
 
-    #: An array of shape (N_targets,) with the total path length, in metres, that the
-    #: pulse followed from the transmitter to each target.
+    This is an array of shape (N_targets, 3) with unit vectors in the global coordinate
+    system. Each vector represents the direction the pulse was travelling when it left
+    the transmitter to reach each target.
+
+    """
+
     tx_path_length: np.ndarray
+    """Length of the transmission acoustic path.
 
-    #: An array of shape (N_receivers, N_targets, 3) with the position of the receivers
-    #: in global coordinates when the echoes reached the receivers.
+    This is a vector of length targets giving the total path length (in metres) that the
+    pulse followed from the transmitter to each target.
+
+    """
+
+    incident_vector: np.ndarray
+    """Direction of incidence of the pulse.
+
+    This is a two-dimensional array of shape (N_targets, 3) with unit vectors in the
+    global coordinate system. Each vector represents the direction the pulse was
+    travelling when it reached the target.
+
+    """
+
+    scattering_vector: np.ndarray
+    """Scattering direction of the pulse.
+
+    This is a three-dimensional array of shape (N_receivers, N_targets, 3) with unit
+    vectors in the global coordinate system. Each vector represents the direction the
+    echo was travelling when it left the target as it returned to each receiver.
+
+    """
+
     rx_position: np.ndarray
+    """Position of the receivers when the echo returned.
 
-    #: A quaternion array of shape (N_receivers, N_targets, 4) with the orientation of
-    #: the receivers in the global system when the echoes reached them.
+    This is a three-dimensional array of shape (N_receivers, N_targets, 3) giving the
+    position of each receiver at the time the echo returned from each target.
+
+    """
+
     rx_orientation: quaternionic.QArray
+    """Orientation of the receivers when the echo returned.
 
-    #: An array of shape (N_receivers, N_targets, 3) with velocity vectors of the sonar
-    #: in the global system at the time the echoes were received.
+    This is a three-dimensional quaternion array of shape (N_receivers, N_targets, 4).
+    Each entry gives the rotation from the global x axis to the normal of the receiver
+    when the echo from each target was received.
+
+    """
+
     rx_velocity: np.ndarray
+    """Velocity of the receivers when the echo returned.
 
-    #: An array of shape (N_receivers, N_targets, 3) with unit vectors in the global
-    #: coordinate system for the direction the echo from each target was travelling when
-    #: it reached each receiver.
+    This is a three-dimensional array of shape (N_receivers, N_targets, 3) giving the
+    velocity in global coordinates at the time the echo was received from each target.
+
+    """
+
     rx_vector: np.ndarray
+    """Direction of echo reception for each target.
 
-    #: An array of shape (N_receivers, N_targets) with the total path length, in metres,
-    #: that the echo from each target took to reach each receiver.
+    This is a three-dimensional array of shape (N_receivers, N_targets, 3) with unit
+    vectors in the global coordinate system. Each vector represents the direction the
+    echo from a target was travelling when it reached the receiver.
+
+    """
+
     rx_path_length: np.ndarray
+    """Length of the reception acoustic path.
 
-    #: An array of shape (N_receivers, N_targets) with multiplicative scale factors to
-    #: apply to the amplitude of the echo from each target, e.g., due to attenuation or
-    #: geometric spreading loss. If None, no scale factors will be applied.
-    scale_factor: np.ndarray | None = None
+    This is a two-dimensional array of shape (N_receivers, N_targets) giving the total
+    path length (in metres) that each echo followed from the target to the receiver.
+
+    """
 
 
 class TravelTime(Plugin):
@@ -579,21 +636,31 @@ class TravelTime(Plugin):
 
         Parameters
         ----------
-        trajectory : openstb.simulator.abc.Trajectory
+        trajectory
             A trajectory plugin instance representing the trajectory followed by the
             system carrying the sonar.
-        ping_time : float
+        ping_time
             The time, in seconds relative to the start of the trajectory, that the ping
             transmission was started.
-        tx_position : array-like
+        environment
+            The environment that the sonar is operating in.
+        tx_position
             The position of the transmitter in the vehicle coordinate system. This must
             be a vector of length 3 containing the x, y and z components of the
             position.
-        rx_positions : array-like
+        tx_orientation
+            The orientation of the transmitter. This is given as a quaternion
+            representing the rotation from the x axis of the vehicle coordinate system
+            to the normal of the transmitter.
+        rx_positions
             The positions of each receiver in the vehicle coordinate system. This must
             be an array of shape (Nr, 3) containing the x, y and z components of the
             position for all Nr receivers.
-        target_positions : array-like
+        rx_orientations
+            The orientation of each receiver. These are given as quaternions
+            representing the rotation from the x axis of the vehicle coordinate system
+            to the normal of each receiver.
+        target_positions
             The position of each target in the global coordinate system. This must be an
             array of shape (Nt, 3) containing the x, y and z components of all Nt
             targets.

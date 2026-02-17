@@ -44,6 +44,8 @@ def test_tt_iterative_linear_colocated():
     assert np.allclose(result.tx_vector, [0, 1, 0])
     assert result.tx_path_length.shape == (2,)
     assert np.allclose(result.tx_path_length, [29, 39])
+    assert result.incident_vector.shape == (2, 3)
+    assert np.allclose(result.incident_vector, [0, 1, 0])
 
     # True travel time for the linear velocity.
     dotprod = np.sum(result.tx_velocity[np.newaxis, :] * result.tx_vector, axis=-1)
@@ -71,6 +73,8 @@ def test_tt_iterative_linear_colocated():
     assert np.allclose(result.rx_path_length, rlen)
     assert result.rx_vector.shape == (1, 2, 3)
     assert np.allclose(result.rx_vector, rvec / rlen[:, np.newaxis])
+    assert result.scattering_vector.shape == (1, 2, 3)
+    assert np.allclose(result.scattering_vector, rvec / rlen[:, np.newaxis])
 
 
 class _RandomPositionTraj(Trajectory):

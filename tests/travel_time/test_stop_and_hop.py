@@ -34,6 +34,7 @@ def test_tt_stopandhop():
     assert np.allclose(result.tx_velocity, [1, 0, 0])
     assert np.allclose(result.tx_vector, [0, 1, 0])
     assert np.allclose(result.tx_path_length, [29, 39])
+    assert np.allclose(result.incident_vector, [0, 1, 0])
 
     # First receiver is at same x and z, others at varying z.
     l0 = np.sqrt(29**2 + 1)
@@ -47,14 +48,15 @@ def test_tt_stopandhop():
     assert result.rx_velocity.shape == (1, 1, 3)  # not (3, 2, 3) but broadcastable.
     assert np.allclose(result.rx_velocity, [1, 0, 0])
     assert np.allclose(result.rx_path_length, [[29, 39], [l0, l1], [l0, l1]])
-    assert np.allclose(
-        result.rx_vector,
+    expected_rx = (
         [
             [[0, -1, 0], [0, -1, 0]],
             [[0, -29 / l0, -1 / l0], [0, -39 / l1, -1 / l1]],
             [[0, -29 / l0, 1 / l0], [0, -39 / l1, 1 / l1]],
         ],
     )
+    assert np.allclose(result.rx_vector, expected_rx)
+    assert np.allclose(result.scattering_vector, expected_rx)
 
     assert np.allclose(
         result.travel_time,
@@ -64,4 +66,3 @@ def test_tt_stopandhop():
             [(29 + l0) / 1500.0, (39 + l1) / 1500.0],
         ],
     )
-    assert result.scale_factor is None
