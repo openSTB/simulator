@@ -7,7 +7,7 @@ import logging
 import os
 from pathlib import Path
 import shutil
-from typing import Any, MutableMapping, NotRequired, TypedDict, cast
+from typing import NotRequired, TypedDict
 
 from dask.tokenize import tokenize
 import distributed
@@ -16,7 +16,6 @@ import zarr
 
 from openstb.i18n.support import translations
 from openstb.simulator.plugin import abc
-from openstb.simulator.plugin.util import flatten_system
 
 _ = translations.load("openstb.simulator").gettext
 
@@ -31,16 +30,7 @@ class SimplePointConfig(TypedDict):
     ping_times: abc.PingTimes
 
     #: System information.
-    system: NotRequired[abc.System]
-
-    #: Transducer used for transmitting the signal.
-    transmitter: NotRequired[abc.Transducer]
-
-    #: Plugin representing the transmitted signal.
-    signal: NotRequired[abc.Signal]
-
-    #: Transducers for which the received signal should be simulated.
-    receivers: NotRequired[list[abc.Transducer]]
+    system: abc.System
 
     #: A list of plugins giving the point targets to simulate.
     targets: list[abc.PointTargets]
@@ -355,8 +345,6 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         logger = logging.getLogger(__name__)
         logger.info(_("Preparing for point target simulation"))
 
-        flatten_system(cast(MutableMapping[str, Any], config))
-
         # Ensure any result converter will be able to work.
         result_format = abc.ResultFormat.ZARR_BASEBAND_PRESSURE
         if "result_converter" in config:
@@ -365,7 +353,7 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
                 raise ValueError(_("output converter cannot handle results"))
 
         # Determine the number of receivers being simulated.
-        Nr = len(config["receivers"])
+        Nr = len(config["system"].receivers)
 
         # Calculate the ping start times.
         ping_start = config["ping_times"].calculate(config["trajectory"])
@@ -388,14 +376,15 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         # target close to the end of the maximum range will not wrap round to the start
         # of the trace. The samples in the guard band will be discarded before the trace
         # is saved. We add a factor of 1.1 to account for distortions.
-        gb_size = int(np.ceil(config["signal"].duration * 1.1 * self.sample_rate))
+        signal = config["system"].signal
+        gb_size = int(np.ceil(signal.duration * 1.1 * self.sample_rate))
 
         # Calculate the corresponding sample times and evaluate the signal.
         t = np.arange(Ns + gb_size) / self.sample_rate
-        s = config["signal"].sample(t, self.baseband_frequency)
+        s = signal.sample(t, self.baseband_frequency)
         signal_frequency_bounds = (
-            config["signal"].minimum_frequency,
-            config["signal"].maximum_frequency,
+            signal.minimum_frequency,
+            signal.maximum_frequency,
         )
 
         # Prepare the targets.
@@ -451,7 +440,8 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         # Collate settings that are common for every chunk of the simulation and
         # broadcast it to all workers.
         logger.info(_("Sending common details to cluster workers"))
-        distortion = config["transmitter"].distortion + config.get("distortion", [])
+        transmitter = config["system"].transmitter
+        distortion = transmitter.distortion + config.get("distortion", [])
         common = client.scatter(
             CommonSettings(
                 f=f + self.baseband_frequency,
@@ -459,8 +449,8 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
                 baseband_frequency=self.baseband_frequency,
                 travel_time=config["travel_time"],
                 trajectory=config["trajectory"],
-                tx_position=config["transmitter"].position,
-                tx_ori=config["transmitter"].orientation.ndarray,
+                tx_position=transmitter.position,
+                tx_ori=transmitter.orientation.ndarray,
                 environment=config["environment"],
                 distortion=distortion,
                 signal_frequency_bounds=signal_frequency_bounds,
@@ -599,7 +589,7 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
             )
 
         # Add the simulation tasks.
-        rx = config["receivers"][self.receiver]
+        rx = config["system"].receivers[self.receiver]
         t = ping_start[self.ping]
         for n in range(count):
             try:
@@ -631,7 +621,7 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
 
             # Move on to the next ping+receiver to simulate.
             self.receiver += 1
-            if self.receiver >= len(config["receivers"]):
+            if self.receiver >= len(config["system"].receivers):
                 self.receiver = 0
                 self.ping += 1
                 if self.ping >= len(ping_start):

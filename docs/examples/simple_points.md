@@ -13,10 +13,10 @@ frequency used for basebanding, and finally set a filename for the simulator to 
 its results under.
 
 ```toml
-[simulation]
-plugin = "points"
+[controller]
+plugin = "simple_points"
 result_filename = "simple_points.zarr"
-targets_per_chunk = 500
+points_per_chunk = 500
 sample_rate = 30e3
 baseband_frequency = 110e3
 ```
@@ -56,19 +56,28 @@ total_memory = 0.4
 dashboard_address = ":8787"
 ```
 
-Next, lets specify the details of the transmitter. The coordinate system is x forwards,
-y starboard and z down.  The orientation is a quaternion defining how to rotate the
-transducer from its original pose of pointing along the x axis. The value here results
-in it pointing to starboard and 15 degrees below horizontal. We can also specify the
-beampattern of the transducer via a signal distorting plugin.
+Next, we need to define the sonar system we wish to simulate. Here we will use the
+generic system plugin which requires us to subsequently define the components attached
+to the system.
 
 ```toml
-[transmitter]
+[system]
+plugin = "generic"
+```
+
+Lets start with the transmitter. The coordinate system is x forwards, y starboard and z
+down. The orientation is a quaternion defining how to rotate the transducer from its
+original pose of pointing along the x axis. The value here results in it pointing to
+starboard and 15 degrees below horizontal. We can also specify the beampattern of the
+transducer via a signal distorting plugin.
+
+```toml
+[system.transmitter]
 plugin = "generic"
 position = [0, 1.2, 0.3]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-[transmitter.beampattern]
+[system.transmitter.beampattern]
 plugin = "rectangular_beampattern"
 width = 0.015
 height = 0.03
@@ -77,10 +86,10 @@ receive = false
 frequency = "centre"  # only calculate the scale factor at the centre frequency
 ```
 
-The transmitter will also need a signal to send, in this case an LFM up-chirp.
+The system will also need a signal to send, in this case an LFM up-chirp.
 
 ```toml
-[signal]
+[system.signal]
 plugin = "lfm_chirp"
 f_start = 100e3
 f_stop = 120e3
@@ -99,27 +108,27 @@ Here we use a 5-element receiver array positioned above the transmitter (remembe
 down) and with the same orientation.
 
 ```toml
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [-0.1, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [-0.05, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [0, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [0.05, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [0.1, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]

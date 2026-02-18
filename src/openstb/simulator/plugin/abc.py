@@ -848,17 +848,11 @@ class Transducer(Plugin):
 
 
 class System(Plugin):
-    """A collection of other plugins representing a sonar system.
-
-    Note that any of the properties may be None. The meaning of None can be decided by
-    the simulation type, but would typically indicate that the corresponding plugin
-    should be directly specified in the configuration instead of through the system.
-
-    """
+    """A collection of other plugins representing a sonar system."""
 
     @property
     @abstractmethod
-    def transmitter(self) -> Transducer | None:
+    def transmitter(self) -> Transducer:
         """The transmitting transducer for the system.
 
         Returns
@@ -870,7 +864,7 @@ class System(Plugin):
 
     @property
     @abstractmethod
-    def receivers(self) -> list[Transducer] | None:
+    def receivers(self) -> list[Transducer]:
         """The receiving transducers for the system.
 
         Returns
@@ -882,7 +876,7 @@ class System(Plugin):
 
     @property
     @abstractmethod
-    def signal(self) -> Signal | None:
+    def signal(self) -> Signal:
         """The signal transmitted by the system.
 
         Returns

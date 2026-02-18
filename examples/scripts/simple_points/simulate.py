@@ -7,8 +7,8 @@ from typing import Literal
 import numpy as np
 import quaternionic
 
+from openstb.simulator.controller import simple_points
 from openstb.simulator.plugin import loader
-from openstb.simulator.simulation.points import PointSimulation, PointSimulationConfig
 
 # The local Dask cluster uses the multiprocessing module. This will import this
 # script at the start of each worker process. If the code to configure and start the
@@ -22,7 +22,7 @@ from openstb.simulator.simulation.points import PointSimulation, PointSimulation
 
 def simulate(cluster: Literal["local"] | Literal["mpi"]):
     # Begin our configuration dictionary.
-    config: PointSimulationConfig = {}
+    config: simple_points.SimplePointConfig = {}
 
     # Each plugin is defined through a plugin specification dictionary. This takes the
     # name the plugin is registered under (see pyproject.toml for a list of the included
@@ -242,8 +242,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
         for x in [-0.1, -0.05, 0, 0.05, 0.1]
     ]
 
-    # Combine all this into a System plugin. They could also be placed directly in the
-    # configuration under the transmitter, receivers and signal keys.
+    # Combine all this into a System plugin.
     config["system"] = loader.system(
         {
             "name": "generic",
@@ -293,9 +292,9 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
     # the output name in the simulation definition if you want to re-run the simulation.
     # We manually specify how many targets to include in each chunk of work, and the
     # details about the system sampling. The output will be in the complex baseband.
-    sim = PointSimulation(
+    sim = simple_points.SimplePointSimulation(
         result_filename="simple_points.zarr",
-        targets_per_chunk=1000,
+        points_per_chunk=1000,
         sample_rate=30e3,
         baseband_frequency=110e3,
     )

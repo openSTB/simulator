@@ -18,7 +18,7 @@
 [controller]
 plugin = "simple_points"
 result_filename = "simple_points.zarr" # Intermediate results, will be converted later.
-targets_per_chunk = 500
+points_per_chunk = 500
 sample_rate = 30e3
 baseband_frequency = 110e3
 
@@ -35,11 +35,17 @@ total_memory = 0.4
 dashboard_address = ":8787"
 
 
+# The system in use. The generic plugin requires you to then specify the plugins to use
+# for the transmitter, signal and receivers. You could write a custom plugin to load the
+# system from an external definition.
+[system]
+plugin = "generic"
+
 # The transmitter to use. The coordinate system is x forwards, y starboard and z down.
 # The orientation is a quaternion defining how to rotate the transducer from its
 # original pose of pointing along the x axis. The value here results in it pointing to
 # starboard and 15 degrees below horizontal.
-[transmitter]
+[system.transmitter]
 plugin = "generic"
 position = [0, 1.2, 0.3]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
@@ -47,7 +53,7 @@ orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 # The beampattern of the transmitter. This is a distortion plugin. To disable
 # beampattern effects, you could omit this section. You could also apply it in the
 # general scale factors section as we do with the receiver beampatterns.
-[transmitter.beampattern]
+[system.transmitter.beampattern]
 plugin = "rectangular_beampattern"
 width = 0.015
 height = 0.03
@@ -57,14 +63,14 @@ frequency = "centre"  # only calculate the scale factor at the centre frequency
 
 
 # The signal transmitted by the system.
-[signal]
+[system.signal]
 plugin = "lfm_chirp"
 f_start = 100e3
 f_stop = 120e3
 duration = 0.015
 rms_spl = 190
 
-# This is an inline table. We could also put this into a full table [signal.window]
+# This is an inline table. We could also put this into a full table [system.signal.window]
 # similar to what we did with the transmitter beampattern.
 window = {plugin="tukey", alpha=0.2}
 
@@ -82,34 +88,34 @@ window = {plugin="tukey", alpha=0.2}
 #
 #    beampattern = {name="rectangular_beampattern", width=...}
 #
-# to each receiver table, or you could add a [receivers.beampattern] table (note the
-# single brackets for it) after each [[receivers]] table (TOML will assosciate a
-# sub-table like this with the most recently defined table in the array).
+# to each receiver table, or you could add a [system.receivers.beampattern] table (note
+# the single brackets for it) after each [[system.receivers]] table (TOML will
+# assosciate a sub-table like this with the most recently defined table in the array).
 #
 # For our purposes, we want the same beampattern for each receiver, so we configure it
 # as a distortion later.
 
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [-0.1, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [-0.05, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [0, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [0.05, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]
 
-[[receivers]]
+[[system.receivers]]
 plugin = "generic"
 position = [0.1, 1.2, 0.0]
 orientation = [0.70105738, 0.09229596, -0.09229596, 0.70105738]

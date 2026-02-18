@@ -11,41 +11,33 @@ class GenericSystem(System):
 
     def __init__(
         self,
-        transmitter: PluginOrSpec[Transducer] | None,
-        receivers: list[PluginOrSpec[Transducer]] | None,
-        signal: PluginOrSpec[Signal] | None,
+        transmitter: PluginOrSpec[Transducer],
+        receivers: list[PluginOrSpec[Transducer]],
+        signal: PluginOrSpec[Signal],
     ):
         """
         Parameters
         ----------
-        transmitter : PluginSpec, optional
+        transmitter : PluginSpec
             The transducer to use for transmission.
-        receivers : list[PluginSpec], optional
+        receivers : list[PluginSpec]
             The transducers to be used as receivers.
-        signal : PluginSpec, optional
+        signal : PluginSpec
             The signal transmitted by the system.
 
         """
-        self._transmitter = None
-        if transmitter is not None:
-            self._transmitter = loader.transducer(transmitter)
-
-        self._receivers = None
-        if receivers is not None:
-            self._receivers = [loader.transducer(rx) for rx in receivers]
-
-        self._signal = None
-        if signal is not None:
-            self._signal = loader.signal(signal)
+        self._transmitter = loader.transducer(transmitter)
+        self._receivers = [loader.transducer(rx) for rx in receivers]
+        self._signal = loader.signal(signal)
 
     @property
-    def transmitter(self) -> Transducer | None:
+    def transmitter(self) -> Transducer:
         return self._transmitter
 
     @property
-    def receivers(self) -> list[Transducer] | None:
+    def receivers(self) -> list[Transducer]:
         return self._receivers
 
     @property
-    def signal(self) -> Signal | None:
+    def signal(self) -> Signal:
         return self._signal
