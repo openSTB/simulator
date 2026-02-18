@@ -24,24 +24,28 @@ domain). Again, the license is available in the `LICENSES/` directory or
 [online](https://spdx.org/licenses/CC0-1.0.html).
 
 
+Documentation
+-------------
+
+The documentation for the simulator can be viewed at https://docs.openstb.dev
+
+
 Installation
 ------------
 
-The openSTB tools are not yet published on PyPI (but will be in the near future). Before
-installing the simulator, you will need to have the companion [internationalisation
-support package](https://github.com/openSTB/i18n) installed in your environment, as well
-as the [hatchling build backend](https://pypi.org/project/hatchling/). You can then run
-`python -m pip install --no-build-isolation .` from the top level of a clone of this
-repository (the `--no-build-isolation` prevents pip trying to build it in a clean
-environment without access to the support packages). Some optional packages may also
-need to be installed for your use case. If you want to use MPI-based parallelisation,
-add the `MPI` option to the install: `python -m pip install --no-build-isolation
-".[MPI]"`. To also install tools to help develop code for the framework, add the `dev`
-option: `python -m pip install --no-build-isolation ".[dev]"`. You can give both options
-separated by a comma, i.e., `python -m pip install --no-build-isolation ".[MPI,dev]"`.
+The simulator is published on [PyPI](https://pypi.org) as
+[`openstb-simulator`](https://pypi.org/project/openstb-simulator). You can use your
+preferred Python environment management tool to install it. For example, with pip:
+
+```console
+pip install openstb-simulator
+```
+
+For more installation options, see the documentation.
 
 
 Running the simulator
 ---------------------
 
-See the `examples/` directory for various examples of how to run the simulator.
+See the `examples/` directory for various examples of how to run the simulator. The
+documentation includes more details of these examples.
