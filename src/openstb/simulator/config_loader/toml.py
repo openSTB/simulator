@@ -186,6 +186,13 @@ class TOMLLoader(ConfigLoader):
                     spec[k] = self._collect_parameters(
                         filename, f"{entry}.{k}", spec[k]
                     )
+            if isinstance(spec[k], list):
+                collected = []
+                for i, v in enumerate(spec[k]):
+                    if isinstance(v, dict) and "plugin" in v:
+                        v = self._collect_parameters(filename, f"{entry}.{i}", v)
+                    collected.append(v)
+                spec[k] = collected
 
         return {
             "name": name,
