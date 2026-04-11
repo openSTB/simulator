@@ -78,6 +78,7 @@ markdown_extensions:
       alternate_style: true
 
 extra_javascript:
+  - static/mathjax.js
   - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
 
 watch:
