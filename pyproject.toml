@@ -178,6 +178,7 @@ branch = true
 omit = [
   "*/openstb/i18n/*",
   "*/test_plugin_modules/*",
+  "*/pytest-*/*",
 ]
 
 [tool.coverage.report]
