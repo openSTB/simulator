@@ -24,18 +24,20 @@ class LFMChirp(abc.Signal):
         """
         Parameters
         ----------
-        f_start, f_stop : float
-            The start (t=0) and stop (t=duration) frequencies of the chirp.
-        duration : float
+        f_start
+            The start frequency of the chirp.
+        f_stop
+            The stop frequency of the chirp.
+        duration
             The duration of the chirp in seconds.
-        rms_spl : float
+        rms_spl
             The RMS sound pressure level (decibels relative to 1 micropascal) of the
             signal.
-        rms_after_window : Boolean
+        rms_after_window
             If True, scale the signal to the desired RMS SPL after applying the window.
             If False, scale before applying the window, meaning the windowed signal will
             have a lower RMS SPL.
-        window : PluginSpec
+        window
             Plugin specification for a signal window to apply to the samples of the
             signal.
 
@@ -86,7 +88,7 @@ class LFMChirp(abc.Signal):
             s *= self.window.get_samples(t, self._duration, fill_value=0)
 
         if self.rms_after_window:
-            current = np.sqrt(np.mean(np.abs(s) ** 2))
+            current = np.sqrt(np.mean(np.abs(s[valid]) ** 2))
             s *= level / current
 
         return s
