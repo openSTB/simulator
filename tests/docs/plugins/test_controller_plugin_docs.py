@@ -8,7 +8,7 @@ from openstb.simulator.config_loader.toml import TOMLLoader
 from openstb.simulator.plugin import loader, util
 
 
-def test_docs_plugins_controller_example(tmp_path):
+def test_docs_plugins_controller_example(tmp_path: Path):
     """docs: check example controller plugin works"""
     base = Path(__file__).parent.parent.parent.parent
     example_file = base / "docs" / "plugins" / "controller" / "interface.md"
@@ -60,3 +60,6 @@ def test_docs_plugins_controller_example(tmp_path):
         controller.run(config)
     finally:
         os.chdir(original)
+
+    # Ensure the cluster was terminated.
+    assert config["dask_cluster"]._cluster is None

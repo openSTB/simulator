@@ -175,6 +175,7 @@ filterwarnings = [
 
 [tool.coverage.run]
 branch = true
+concurrency = ["multiprocessing"]
 omit = [
   "*/openstb/i18n/*",
   "*/test_plugin_modules/*",

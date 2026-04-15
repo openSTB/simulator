@@ -1,12 +1,12 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
-from dask.distributed.utils_test import gen_cluster  # type:ignore[import-not-found]
 import numpy as np
 import pytest
 from scipy.stats import kstest  # type:ignore[import-not-found]
 
 from openstb.simulator import random
+from openstb.simulator.plugin.abc import DaskCluster
 
 
 @pytest.mark.parametrize("method", ["uniform", "normal"])
@@ -108,8 +108,7 @@ def test_random_chunked_rng_earlier_block():
     rng.sample(500, 250)
 
 
-@gen_cluster(client=True)
-async def test_random_chunked_rng_dask(c, s, a, b):
+def test_random_chunked_rng_dask(test_cluster: DaskCluster):
     """random.ChunkedRNG: can be used in parallel operations with Dask"""
     # Create an instance with smaller blocks for testing.
     rng = random.ChunkedRNG(5679881658710, "normal", 3)
@@ -119,8 +118,9 @@ async def test_random_chunked_rng_dask(c, s, a, b):
     samples = rng.sample(0, 2700)
 
     # And submit a job to our test cluster.
-    futures = c.map(lambda start: rng.sample(start, 100), np.arange(0, 2700, 100))
-    dask_samples = np.concat([await fut.result() for fut in futures])
+    client = test_cluster.client
+    futures = client.map(lambda start: rng.sample(start, 100), np.arange(0, 2700, 100))
+    dask_samples = np.concat([res for res in client.gather(futures)])
     assert np.allclose(dask_samples, samples)
 
 

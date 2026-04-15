@@ -163,6 +163,9 @@ class MyController(abc.Controller[MyControllerConfig]):
         trace_f = summed.result()
         del summed
 
+        # We have finished with the cluster.
+        config["dask_cluster"].terminate()
+
         # We can now return the result to the time domain.
         trace = np.fft.ifft(trace_f)
         logger.info("Simulation complete")
@@ -182,7 +185,7 @@ points_per_chunk = 10
 plugin = "local"
 workers = 8
 total_memory = 0.4
-dashboard_address = ":8787"
+dashboard_address = ":8778"
 
 [signal]
 plugin = "lfm_chirp"
