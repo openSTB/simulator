@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
 import numpy as np
+from numpy.typing import ArrayLike
 import pytest
-from scipy.stats import kstest
+from scipy.stats import kstest  # type:ignore[import-not-found]
 
 from openstb.simulator.target import points
 
@@ -276,3 +277,103 @@ def test_target_points_single(position, reflectivity):
     assert strength.shape == (1,)
     assert np.allclose(pos, position)
     assert np.allclose(strength, reflectivity)
+
+
+@pytest.mark.parametrize(
+    "startpos,endpos,N,reflectivity",
+    [
+        ([0, 0, 0], [10, 0, 0], 11, 1),
+        ([67.67, 22.42, 8.5], [76.76, 50.8, 7.5], 30, 0.22),
+    ],
+)
+def test_target_points_line_endpos(
+    startpos: ArrayLike, endpos: ArrayLike, N: int, reflectivity: float
+):
+    """target.points: PointLine with end_position"""
+    tgt = points.PointLine(N, reflectivity, startpos, end_position=endpos)
+    assert len(tgt) == N
+
+    # All in one chunk.
+    pos, refl = tgt.get_chunk(0, -1)
+    assert pos.shape == (N, 3)
+    assert refl.shape == (N,)
+    assert np.allclose(pos[0], startpos)
+    assert np.allclose(pos[-1], endpos)
+    dx = pos[1] - pos[0]
+    assert np.allclose(pos, startpos + np.arange(N)[:, None] * dx)
+
+    # Access in parts.
+    pos2a, refl2a = tgt.get_chunk(0, 5)
+    pos2b, refl2b = tgt.get_chunk(5, -1)
+    pos2 = np.concat((pos2a, pos2b), axis=0)
+    refl2 = np.concat((refl2a, refl2b), axis=0)
+    assert np.allclose(pos2, pos)
+    assert np.allclose(refl2, refl)
+
+
+@pytest.mark.parametrize(
+    "startpos,spacing,N,reflectivity",
+    [
+        ([0, 0, 0], [1, 0, 0], 11, 1),
+        ([67.67, 22.42, 8.5], [0.5, 2.8, -0.1], 30, 0.8),
+    ],
+)
+def test_target_points_line_spacing(
+    startpos: ArrayLike, spacing: ArrayLike, N: int, reflectivity: float
+):
+    """target.points: PointLine with end_position"""
+    tgt = points.PointLine(N, reflectivity, startpos, spacing=spacing)
+    assert len(tgt) == N
+
+    # All in one chunk.
+    pos, refl = tgt.get_chunk(0, -1)
+    assert pos.shape == (N, 3)
+    assert refl.shape == (N,)
+    assert np.allclose(pos[0], startpos)
+    dx = pos[1] - pos[0]
+    assert np.allclose(dx, spacing)
+    assert np.allclose(pos, startpos + np.arange(N)[:, None] * dx)
+
+    # Access in parts.
+    pos2a, refl2a = tgt.get_chunk(0, 5)
+    pos2b, refl2b = tgt.get_chunk(5, -1)
+    pos2 = np.concat((pos2a, pos2b), axis=0)
+    refl2 = np.concat((refl2a, refl2b), axis=0)
+    assert np.allclose(pos2, pos)
+    assert np.allclose(refl2, refl)
+
+
+def test_target_points_line_error():
+    """target.points: PointLine error handling"""
+    # Size of arrays.
+    with pytest.raises(ValueError, match="start_position.+3 elements"):
+        points.PointLine(10, 1, [0, 2], end_position=[0, 0, 0])
+    with pytest.raises(ValueError, match="start_position.+3 elements"):
+        points.PointLine(10, 1, [[0, 2, 0], [0, 5, 0]], end_position=[0, 0, 0])
+    with pytest.raises(ValueError, match="spacing.+3 elements"):
+        points.PointLine(10, 1, [0, 0, 0], spacing=[0, 10])
+    with pytest.raises(ValueError, match="spacing.+3 elements"):
+        points.PointLine(10, 1, [0, 2, 0], spacing=[[0, 0, 0], [0, 0, 0]])
+    with pytest.raises(ValueError, match="end_position.+3 elements"):
+        points.PointLine(10, 1, [0, 0, 0], end_position=[0, 2])
+    with pytest.raises(ValueError, match="end_position.+3 elements"):
+        points.PointLine(10, 1, [0, 2, 0], end_position=[[10, 0, 0], [0, 10, 0]])
+
+    # Exclusivity of spacing/end_position.
+    with pytest.raises(ValueError, match="exactly one.+end_position or spacing"):
+        points.PointLine(21, 1, [0, 0, 0])
+    with pytest.raises(ValueError, match="exactly one.+end_position or spacing"):
+        points.PointLine(21, 1, [0, 0, 0], spacing=[1, 0, 0], end_position=[10, 0, 0])
+
+    # Indexing errors in get_chunk.
+    tgt = points.PointLine(13, 0.5, [0, 0, 0], spacing=[1, 0, 0])
+    with pytest.raises(IndexError, match="start_index.+negative"):
+        tgt.get_chunk(-2, 5)
+    with pytest.raises(IndexError, match="start_index out of range"):
+        tgt.get_chunk(15, 5)
+    with pytest.raises(IndexError, match="count.+positive"):
+        tgt.get_chunk(2, 0)
+    with pytest.raises(IndexError, match="count.+positive"):
+        tgt.get_chunk(8, -5)
+    with pytest.raises(IndexError, match="count out of range"):
+        tgt.get_chunk(10, 5)

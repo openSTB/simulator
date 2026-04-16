@@ -280,3 +280,78 @@ class SinglePoint(PointTargets):
             count = 1
 
         return self._position, self._reflectivity
+
+
+class PointLine(PointTargets):
+    """A regularly spaced line of points."""
+
+    def __init__(
+        self,
+        num_points: int,
+        reflectivity: float,
+        start_position: ArrayLike,
+        end_position: ArrayLike | None = None,
+        spacing: ArrayLike | None = None,
+    ):
+        """
+        Parameters
+        ----------
+        num_points
+            The number of points in the line.
+        reflectivity
+            The reflectivity of the targets (the fraction of incident energy that will
+            scatter back to the receiver).
+        start_position
+            The position of the first point in the line.
+        end_position
+            The position of the last point in the line. Cannot be given if `spacing` is.
+        spacing
+            The spacing between neighbouring points in the line. Cannot be given if
+            `end_position` is, and must be given if `end_position` is not.
+
+        """
+        self.start_position = np.atleast_1d(start_position)
+        if self.start_position.shape != (3,):
+            raise ValueError(_("start_position must have 3 elements"))
+
+        self.reflectivity = reflectivity
+        self.num_points = num_points
+
+        if end_position is None and spacing is None:
+            raise ValueError(_("exactly one of end_position or spacing must be given"))
+        if end_position is not None and spacing is not None:
+            raise ValueError(_("exactly one of end_position or spacing must be given"))
+
+        if spacing is not None:
+            self.spacing = np.atleast_1d(spacing)
+            if self.spacing.shape != (3,):
+                raise ValueError(_("spacing must have 3 elements"))
+        if end_position is not None:
+            end_position = np.atleast_1d(end_position)
+            if end_position.shape != (3,):
+                raise ValueError(_("end_position must have 3 elements"))
+            self.spacing = (end_position - start_position) / (self.num_points - 1)
+
+    def __len__(self) -> int:
+        return self.num_points
+
+    def get_chunk(self, start_index: int, count: int) -> tuple[np.ndarray, np.ndarray]:
+        if count == -1:
+            count = self.num_points - start_index
+
+        if start_index < 0:
+            raise IndexError(_("start_index cannot be negative"))
+        if start_index >= self.num_points:
+            raise IndexError(_("start_index out of range"))
+        if count < 1:
+            raise IndexError(_("count must be positive"))
+
+        end_index = start_index + count
+        if end_index > self.num_points:  # end_index is not inclusive, hence >
+            raise IndexError(_("count out of range"))
+
+        offset = np.arange(start_index, end_index)
+        position = self.start_position + offset[:, None] * self.spacing
+        reflectivity = np.full(count, self.reflectivity)
+
+        return position, reflectivity
