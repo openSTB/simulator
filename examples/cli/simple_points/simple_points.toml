@@ -185,14 +185,14 @@ plugin = "stop_and_hop"
 
 # Geometric spreading losses. This plugin applies a factor of 1/r^{power} to both the
 # incident and scattered waves. Using a power of 1 corresponds to spherical spreading.
-[[distortion]]
+[[emitted_distortion]]
 plugin = "geometric_spreading"
 power = 1
 
 # Estimate the energy loss due to acoustic attenuation. We decide to calculate this only
 # at the centre frequency rather than calculating a separate loss for each frequency in
 # the simulation.
-[[distortion]]
+[[echo_distortion]]
 plugin = "anslie_mccolm_attenuation"
 frequency = "centre"
 
@@ -201,7 +201,7 @@ frequency = "centre"
 # transmit beampattern by setting transmit = true. For the purposes of the example, the
 # beampatterns were split to demonstrate how to set it within a transducer
 # specification.
-[[distortion]]
+[[echo_distortion]]
 plugin = "rectangular_beampattern"
 width = 0.015
 height = 0.03

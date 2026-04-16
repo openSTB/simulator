@@ -23,7 +23,7 @@ from openstb.simulator.travel_time.stop_and_hop import StopAndHop
 
 
 @pytest.mark.parametrize("amplitude", [1, 800])
-@pytest.mark.parametrize("spreading", ["none", "common", "rx"])
+@pytest.mark.parametrize("spreading", ["none", "emitted", "echo", "rx"])
 def test_controller_simple_points_chunk_amplitude(amplitude: float, spreading: str):
     """controller.simple_points: amplitude of single chunk"""
     # Generate a simple 1kHz (relative to baseband) sine wave.
@@ -41,8 +41,9 @@ def test_controller_simple_points_chunk_amplitude(amplitude: float, spreading: s
     S = np.fft.fftshift(np.fft.fft(s, norm="forward"))
     assert np.allclose(np.abs(S).max(), amplitude / 10)
 
-    # Create common setting structure.
-    common = simple_points.CommonSettings(
+    # Create common setting structure
+    plugin = GeometricSpreading(power=1)
+    common = simple_points._CommonSettings(
         f=f,
         S=S,
         signal_frequency_bounds=(f_signal - 1e3, f_signal + 1e3),
@@ -52,7 +53,8 @@ def test_controller_simple_points_chunk_amplitude(amplitude: float, spreading: s
         environment=InvariantEnvironment(35, 1500, 10),
         tx_position=np.array([0, 0, 0]),
         tx_ori=np.array([1, 0, 0, 0]),
-        distortion=[GeometricSpreading(power=1)] if spreading == "common" else [],
+        emitted_distortion=[plugin] if spreading == "emitted" else [],
+        echo_distortion=[plugin] if spreading == "echo" else [],
     )
 
     # Simulate two targets spaced by more than signal length.
@@ -62,7 +64,7 @@ def test_controller_simple_points_chunk_amplitude(amplitude: float, spreading: s
         ping_time=0,
         rx_position=np.array([0, 0, 0]),
         rx_ori=np.array([1, 0, 0, 0]),
-        rx_distortion=[GeometricSpreading(power=1)] if spreading == "rx" else [],
+        rx_distortion=[plugin] if spreading == "rx" else [],
         common=common,
         max_t=T * 10,
     )
@@ -86,13 +88,14 @@ def test_controller_simple_points_chunk_amplitude(amplitude: float, spreading: s
 
 
 @pytest.mark.parametrize("spl", [120, 175.5])
-@pytest.mark.parametrize("spreading", [False, True])
+@pytest.mark.parametrize("spreading", ["none", "emitted", "echo"])
 def test_controller_simple_points_amplitude(
     test_cluster: abc.DaskCluster, tmp_path: Path, spl: float, spreading: bool, subtests
 ):
     """controller.simple_points: amplitude of individual points"""
 
     # Define the configuration of the simulation.
+    plugin = GeometricSpreading(power=1)
     config: simple_points.SimplePointConfig = {
         "dask_cluster": test_cluster,
         "system": GenericSystem(
@@ -108,7 +111,8 @@ def test_controller_simple_points_amplitude(
         "targets": [SinglePoint([0, 50, 0], 1), SinglePoint([0, 25, 0], 1)],
         "environment": InvariantEnvironment(35, 1480, 10),
         "travel_time": StopAndHop(),
-        "distortion": [GeometricSpreading(power=1)] if spreading else [],
+        "emitted_distortion": [plugin] if spreading == "emitted" else [],
+        "echo_distortion": [plugin] if spreading == "echo" else [],
     }
 
     # Create the controller.
@@ -166,7 +170,7 @@ def test_controller_simple_points_amplitude(
 
         # Expected pressure.
         pa = 1e-6 * 10 ** (spl / 20)
-        if spreading:
+        if spreading != "none":
             pa = pa / r_tx
             pa = pa[:, None] / r_rx
 
@@ -201,15 +205,16 @@ def test_controller_simple_points_distortion_amplitude(
     Ns = int(np.round(max_t * fs))
     duration = 10e-3
 
-    # Create our test plugin. We cannot do this at the top-level of the module as it
-    # cannot be serialized (Dask would include the path in the serialization, and the
-    # tests module is not available to the workers).
-    class CheckDistortionAmplitude(abc.Distortion):
-        def __init__(self, base_path: Path, fs: float, duration: float):
+    # Create a plugin to record the RMS of each echo. We cannot define this at the
+    # top-level of the module as it cannot be serialized (Dask would include the path in
+    # the serialization, and the tests module is not available to the workers).
+    class RecordDistortionAmplitude(abc.Distortion):
+        def __init__(self, fn: Path, fs: float, duration: float, delayed: bool):
             self.lock = Lock()
-            self.fn = base_path / "rms.txt"
+            self.fn = fn
             self.fs = fs
             self.duration = duration
+            self.delayed = delayed
 
         def apply(
             self,
@@ -222,9 +227,12 @@ def test_controller_simple_points_distortion_amplitude(
             tt_result: abc.TravelTimeResult,
         ) -> np.ndarray:
             # Find the index the echo should start at.
-            assert tt_result.travel_time.shape == (1, 1)
-            t0 = float(tt_result.travel_time.squeeze())
-            idx = int(np.ceil(t0 * self.fs))
+            if self.delayed:
+                assert tt_result.travel_time.shape == (1, 1)
+                t0 = float(tt_result.travel_time.squeeze())
+                idx = int(np.ceil(t0 * self.fs))
+            else:
+                idx = 0
 
             # Take the inverse FFT and extract the echo. We skip the first and last
             # samples as the echo may not be aligned to the sampling.
@@ -245,18 +253,27 @@ def test_controller_simple_points_distortion_amplitude(
             # We don't actually modify the signal.
             return S
 
-    # Create an instance and add to a receiver.
-    checker = CheckDistortionAmplitude(tmp_path, fs, duration)
+    # Create instances for each stage.
+    tx = RecordDistortionAmplitude(tmp_path / "tx.txt", fs, duration, False)
+    emitted = RecordDistortionAmplitude(tmp_path / "emitted.txt", fs, duration, False)
+    echo = RecordDistortionAmplitude(tmp_path / "echo.txt", fs, duration, True)
+    rx = RecordDistortionAmplitude(tmp_path / "rx.txt", fs, duration, True)
+
+    # Create the transducers.
+    transmitter = GenericTransducer(position=[0, 0, 0], orientation=[1, 0, 0, 0])
+    transmitter._distortion.append(tx)
     receivers = [
         GenericTransducer(position=[0, 0, 0], orientation=[1, 0, 0, 0]),
     ]
-    receivers[0]._distortion.append(checker)
+    receivers[0]._distortion.append(rx)
 
     # Define the configuration of the simulation.
+    txspread = GeometricSpreading(power=1, receive=False)
+    rxspread = GeometricSpreading(power=1, transmit=False)
     config: simple_points.SimplePointConfig = {
         "dask_cluster": test_cluster,
         "system": GenericSystem(
-            transmitter=GenericTransducer(position=[0, 0, 0], orientation=[1, 0, 0, 0]),
+            transmitter=transmitter,
             receivers=receivers,
             signal=LFMChirp(110e3, 130e3, duration, spl),
         ),
@@ -265,7 +282,8 @@ def test_controller_simple_points_distortion_amplitude(
         "targets": [SinglePoint([0, 50, 0], 0.6)],
         "environment": InvariantEnvironment(35, 1480, 10),
         "travel_time": StopAndHop(),
-        "distortion": [GeometricSpreading(1)] if spreading else [],
+        "emitted_distortion": [txspread, emitted] if spreading else [emitted],
+        "echo_distortion": [echo, rxspread] if spreading else [echo],
     }
 
     # Create the controller.
@@ -279,12 +297,24 @@ def test_controller_simple_points_distortion_amplitude(
 
     # Run the simulation and load the amplitudes recorded by the plugin.
     controller.run(config)
-    rms = np.loadtxt(tmp_path / "rms.txt")
+    tx_pa = np.loadtxt(tmp_path / "tx.txt")
+    emitted_pa = np.loadtxt(tmp_path / "emitted.txt")
+    echo_pa = np.loadtxt(tmp_path / "echo.txt")
+    rx_pa = np.loadtxt(tmp_path / "rx.txt")
 
-    # Expected pressure. Note that the target has a reflectivity of 0.6.
-    pa = np.array(0.6 * 1e-6 * 10 ** (spl / 20))
+    # Expected pressures without spreading. The target has a reflectivity of 0.6.
+    tx_expected = np.array(1e-6 * 10 ** (spl / 20))
+    emitted_expected = tx_expected
+    echo_expected = 0.6 * emitted_expected
+    rx_expected = echo_expected
+
+    # Apply spreading losses if appropriate.
     if spreading:
-        pa = pa / rms[:, 1]
-        pa = pa / rms[:, 2]
+        emitted_expected = emitted_expected / emitted_pa[:, 1]
+        echo_expected = echo_expected / echo_pa[:, 1]
+        rx_expected = rx_expected / (rx_pa[:, 1] * rx_pa[:, 2])
 
-    assert np.allclose(rms[:, 3], pa, atol=0, rtol=0.001)
+    assert np.allclose(tx_pa[:, 3], tx_expected, atol=0, rtol=0.001)
+    assert np.allclose(emitted_pa[:, 3], emitted_expected, atol=0, rtol=0.001)
+    assert np.allclose(echo_pa[:, 3], echo_expected, atol=0, rtol=0.001)
+    assert np.allclose(rx_pa[:, 3], rx_expected, atol=0, rtol=0.001)

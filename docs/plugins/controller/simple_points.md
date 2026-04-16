@@ -8,15 +8,49 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **Plugin name**: `simple_points`
 <br>
 **Implementation**: [`openstb.simulator.controller.simple_points.SimplePointSimulation`][]
+<br>
+**Configuration**: [`openstb.simulator.controller.simple_points.SimplePointConfig`][]
 
 The `simple_points` controller simulates the scene as a collection of infinitesimally
-small point targets. These have no aspect dependence and cause no shadows. The
-simulation is performed in the frequency domain. For a two-way travel time $\tau$ from a
-transmitter to a target and back to a receiver, a phase shift of the signal spectrum
-$S_{rx}(f) = S(f)\exp(-2j\pi f \tau)$ can be used to model the delayed signal.
+small point targets with a constant reflectivity factor. These have no aspect dependence
+and cause no shadows.
 
 
-## Result filename
+## Simulation procedure
+
+The simulation is performed in the frequency domain. For each ping/channel/target
+combination, the following steps are performed:
+
+1. Use the configured [TravelTime][openstb.simulator.plugin.abc.TravelTime] plugin to
+   find the two-way travel time $\tau$ of the acoustic pulse.
+
+2. Take the Fourier transform of the transmitted signal.
+
+3. Apply any [Distortion][openstb.simulator.plugin.abc.Distortion] plugins set by the
+   transmitter. This is most commonly used to model the beampattern of the transmitter.
+
+4. Apply any Distortion plugins configured for the emitted path.
+
+5. Apply a phase shift $\exp(-2j\pi f \tau)$ to the signal spectrum to delay the echo by
+   the two-way travel time.
+
+6. Scale the spectrum by the reflectivity of the target.
+
+7. Apply any Distortion plugins configured for the echo path.
+
+8. Apply any Distortion plugins set by the receiver.
+
+9. Return to the time domain.
+
+For each ping/channel pair, the responses are summed over all targets to get the final
+received signal. Note that for efficiency the implementation models many target
+responses at once and that the inverse Fourier transform is applied after summing over
+targets.
+
+
+## Parameters
+
+### Result filename
 
 The results of the simulation are stored in a [Zarr](https://zarr.readthedocs.io/) file.
 The filename to use must be specified by the `result_filename` parameter to the plugin.
@@ -31,7 +65,7 @@ final output already exists; it is up to the result converter plugin to check fo
 and handle it accordingly.
 
 
-## Chunk size
+### Chunk size
 
 The point targets are broken into chunks for simulation. The maximum number of points in
 each chunk must be set by the `points_per_chunk` parameter. This should be small enough
@@ -40,7 +74,7 @@ the chunks are the more chunks are required for the simulation, and thus the mor
 overhead there is on the cluster.
 
 
-## Sampling properties
+### Sampling properties
 
 The simulation produces samples of the received pressure in baseband. The sampling rate
 of the result in Hertz must be specified via the `sample_rate` parameter. The carrier
@@ -49,7 +83,7 @@ the `baseband_frequency` parameter.
 
 
 
-## Task submission thresholds
+### Task submission thresholds
 
 The controller attempts to submit simulation tasks to the cluster in such a way as to
 keep the number of in-progress and pending tasks within a set range. If one task
@@ -67,7 +101,7 @@ until the upper threshold is reached. Note that the thresholds are not hard limi
 that due to timing the number of tasks may be outside the set range.
 
 
-## Reduction tree size
+### Reduction tree size
 
 The results of each chunk of the simulation need to be added together and eventually
 written to disk. It is not desirable to add each chunk to the result on disk as it
@@ -96,7 +130,9 @@ a_{2,1} &= a_{1,1} + a_{1,2}, \\
 After a certain number of levels, the accumulated result is added to the result on disk.
 The number of nodes accumulated at each level is set by the `reduction_node_count`
 parameter (which defaults to 4) and the number of levels to reduce before writing to
-disk is set by the `reduction_levels` parameter (which defaults to 3).
+disk is set by the `reduction_levels` parameter (which defaults to 3). The number of
+chunks involved in each write operation is given by `reduction_node_count` raised to the
+power of `reduction_levels`. With the default values, this is $4^3 = 64$.
 
 !!! Note
     Floating-point addition is [not necessarily associative](https://en.wikipedia.org/wiki/Floating-point_arithmetic#Accuracy_problems),

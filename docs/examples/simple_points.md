@@ -206,16 +206,22 @@ we want to use the stop-and-hop approximation to simplify the calculation.
 plugin = "stop_and_hop"
 ```
 
-Various distortions can be applied to the acoustic waves. This is also an array of
+Various distortions can be applied to the acoustic waves. These are set in two arrays of
 plugins. Lets start by adding some energy loss due to geometric spreading (here we set
-the power parameter for spherical spreading) and also due to acoustic attenuation.
+the power parameter for spherical spreading) and also due to acoustic attenuation. To
+demonstrate the options, we apply the former while the wave is travelling to the target
+and the latter while it is returned to the receiver. Both plugins will use the full
+transmit and receive path length when scaling the signal (but can be configured to use
+just one of the two paths). In this example we have no non-linear plugins so it does not
+matter when we apply them, but if you did you would need to apply these losses
+separately to properly model the signal strength input to those plugins.
 
 ```toml
-[[distortion]]
+[[emitted_distortion]]
 plugin = "geometric_spreading"
 power = 1
 
-[[distortion]]
+[[echo_distortion]]
 plugin = "anslie_mccolm_attenuation"
 frequency = "centre"
 ```
@@ -225,7 +231,7 @@ with each receiver definition above, but since we want the same for all receiver
 easier to define this as a general plugin.
 
 ```toml
-[[distortion]]
+[[echo_distortion]]
 plugin = "rectangular_beampattern"
 width = 0.015
 height = 0.03

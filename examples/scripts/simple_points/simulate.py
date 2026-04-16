@@ -151,7 +151,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
 
     # Apply two distortions: spherical spreading (1/r scaling to the amplitude on
     # each direction) and acoustic attenuation.
-    config["distortion"] = [
+    config["emitted_distortion"] = [
         loader.distortion(
             {
                 "name": "geometric_spreading",
@@ -159,7 +159,9 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
                     "power": 1.0,
                 },
             }
-        ),
+        )
+    ]
+    config["echo_distortion"] = [
         loader.distortion(
             {
                 "name": "anslie_mccolm_attenuation",
@@ -167,7 +169,7 @@ def simulate(cluster: Literal["local"] | Literal["mpi"]):
                     "frequency": "centre",
                 },
             }
-        ),
+        )
     ]
 
     # Define the signal the sonar will transmit; a Tukey-windowed LFM upchirp here.

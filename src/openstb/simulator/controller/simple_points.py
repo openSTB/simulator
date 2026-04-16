@@ -23,36 +23,49 @@ _ = translations.load("openstb.simulator").gettext
 class SimplePointConfig(TypedDict):
     """Specification for the SimplePointSimulation configuration dictionary."""
 
-    # Dask cluster to run the simulation on.
     dask_cluster: abc.DaskCluster
+    """Dask cluster to run the simulation on."""
 
-    #: Plugin which will calculate ping start times.
-    ping_times: abc.PingTimes
+    echo_distortion: NotRequired[list[abc.Distortion]]
+    """Plugins to apply distortion to the echoed signal.
 
-    #: System information.
-    system: abc.System
+    These are applied to the signal after it has been scattered by a target and before
+    it reaches the receiver. They are applied in the order they are given here.
 
-    #: A list of plugins giving the point targets to simulate.
-    targets: list[abc.PointTargets]
+    """
 
-    #: Plugin specifying the trajectory followed by the system.
-    trajectory: abc.Trajectory
+    emitted_distortion: NotRequired[list[abc.Distortion]]
+    """Plugins to apply distortion to the emitted signal.
 
-    #: Details about the environment the system is operating in.
+    These are applied to the signal after it has been transmitted and before it reaches
+    the target. They are applied in the order they are given here.
+
+    """
+
     environment: abc.Environment
+    """Plugin to provide details about the simulated environment."""
 
-    #: Plugin which will calculate the travel times to and from each target.
-    travel_time: abc.TravelTime
+    ping_times: abc.PingTimes
+    """Plugin to calculate ping start times."""
 
-    #: Plugins which will apply distortions to each echo.
-    distortion: NotRequired[list[abc.Distortion]]
-
-    #: Plugin to convert the output into a desired format.
     result_converter: NotRequired[abc.ResultConverter]
+    """Plugin to convert the simulation output into a desired format."""
+
+    system: abc.System
+    """Details about the system to simulate."""
+
+    targets: list[abc.PointTargets]
+    """A list of plugins giving the point targets to simulate."""
+
+    trajectory: abc.Trajectory
+    """Plugin specifying the trajectory followed by the system."""
+
+    travel_time: abc.TravelTime
+    """Plugin to calculate the travel times to and from each target."""
 
 
 @dataclass(slots=True, eq=False, order=False)
-class CommonSettings:
+class _CommonSettings:
     """Container for simulation settings that are common to all chunks."""
 
     # Simulation frequencies (passband).
@@ -82,8 +95,11 @@ class CommonSettings:
     # Orientation of the transmitter in the system.
     tx_ori: np.ndarray
 
-    # Distortion of the signal.
-    distortion: list[abc.Distortion]
+    # Distortion of the signal prior to incidence.
+    emitted_distortion: list[abc.Distortion]
+
+    # Distortions to apply to the echo before it reaches the receiver.
+    echo_distortion: list[abc.Distortion]
 
 
 def _target_chunk_iterator(
@@ -130,7 +146,7 @@ def _point_simulation_chunk(
     rx_position: np.ndarray,
     rx_ori: np.ndarray,
     rx_distortion: list[abc.Distortion],
-    common: CommonSettings,
+    common: _CommonSettings,
     max_t: float,
 ) -> np.ndarray:
     """Simulation of a chunk of receivers and/or targets."""
@@ -149,8 +165,8 @@ def _point_simulation_chunk(
     # Start with the transmitted spectrum.
     Schunk = common.S[np.newaxis, :, np.newaxis]
 
-    # Distort.
-    for distortion in common.distortion:
+    # Apply any distortions from the transmitter or during its travel to the target.
+    for distortion in common.emitted_distortion:
         Schunk = distortion.apply(
             ping_time,
             common.f,
@@ -170,8 +186,8 @@ def _point_simulation_chunk(
     # Scale by the reflectivity of the target.
     Schunk *= reflectivity
 
-    # Apply each receive distortion.
-    for distortion in rx_distortion:
+    # Apply any distortions from its travel during return or by the receiver.
+    for distortion in common.echo_distortion + rx_distortion:
         Schunk = distortion.apply(
             ping_time,
             common.f,
@@ -249,11 +265,13 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
 
     which has the same number of operations but allows memory to be freed earlier. Note
     that, since floating-point operations are generally not associative, these two
-    results will differ by some small amount proportional to the machine precision.
+    results will differ by some small amount proportional to the machine precision and
+    the number of operations.
 
     This reduction will be performed for a few levels, after which the combined set of
     results will be written to disk. The number of chunks in each write is given by
-    reduction_node_count ** reduction_levels.
+    the `reduction_node_count` parameter raised to the power of the `reduction_levels`
+    parameter.
 
     """
 
@@ -441,9 +459,12 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         # broadcast it to all workers.
         logger.info(_("Sending common details to cluster workers"))
         transmitter = config["system"].transmitter
-        distortion = transmitter.distortion + config.get("distortion", [])
+        emitted_distortion = transmitter.distortion + config.get(
+            "emitted_distortion", []
+        )
+        echo_distortion = config.get("echo_distortion", [])
         common = client.scatter(
-            CommonSettings(
+            _CommonSettings(
                 f=f + self.baseband_frequency,
                 S=S,
                 baseband_frequency=self.baseband_frequency,
@@ -452,7 +473,8 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
                 tx_position=transmitter.position,
                 tx_ori=transmitter.orientation.ndarray,
                 environment=config["environment"],
-                distortion=distortion,
+                emitted_distortion=emitted_distortion,
+                echo_distortion=echo_distortion,
                 signal_frequency_bounds=signal_frequency_bounds,
             ),
             broadcast=True,
