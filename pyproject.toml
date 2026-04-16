@@ -49,6 +49,7 @@ doc = [
 tests = [
   "pytest",
   "pytest-cov",
+  "pytest-subtests",
   "requests",
 ]
 dev = [
@@ -180,6 +181,7 @@ omit = [
   "*/openstb/i18n/*",
   "*/test_plugin_modules/*",
   "*/pytest-*/*",
+  "conftest.py",
 ]
 
 [tool.coverage.report]

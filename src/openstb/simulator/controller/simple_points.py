@@ -211,7 +211,7 @@ def _point_simulation_store(
         result_fdomain = np.sum(results_fdomain, axis=0)
 
     # Return to the time domain.
-    result = np.fft.ifft(np.fft.ifftshift(result_fdomain))
+    result = np.fft.ifft(np.fft.ifftshift(result_fdomain), norm="forward")
 
     # Remove any guard band.
     Nt = storage.shape[-1]
@@ -430,7 +430,7 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
 
         # The bulk of the simulation is carried out in the frequency domain.
         f = np.fft.fftshift(np.fft.fftfreq(Ns + gb_size, 1 / self.sample_rate))
-        S = np.fft.fftshift(np.fft.fft(s))
+        S = np.fft.fftshift(np.fft.fft(s, norm="forward"))
 
         # Prepare the cluster.
         logger.info(_("Initialising Dask cluster"))

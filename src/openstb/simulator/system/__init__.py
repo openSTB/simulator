@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+from collections.abc import Sequence
+
 from openstb.simulator.plugin import loader
 from openstb.simulator.plugin.abc import Signal, System, Transducer
 from openstb.simulator.types import PluginOrSpec
@@ -12,7 +14,7 @@ class GenericSystem(System):
     def __init__(
         self,
         transmitter: PluginOrSpec[Transducer],
-        receivers: list[PluginOrSpec[Transducer]],
+        receivers: Sequence[PluginOrSpec[Transducer]],
         signal: PluginOrSpec[Signal],
     ):
         """
