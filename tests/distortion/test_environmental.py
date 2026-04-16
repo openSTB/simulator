@@ -11,7 +11,7 @@ from openstb.simulator.plugin.abc import TravelTimeResult
 
 
 @pytest.mark.parametrize("power,N_rx,N_tgt", [(1, 4, 11), (2, 1, 1), (0.5, 1, 25)])
-def test_scalefactor_environmental_geospreading(power, N_rx, N_tgt):
+def test_scalefactor_environmental_geospreading(power, N_rx, N_tgt, subtests):
     """scale_factor.environmental: geometric spreading loss factor"""
     env = InvariantEnvironment(salinity=35, sound_speed=1500.0, temperature=7.5)
 
@@ -40,22 +40,39 @@ def test_scalefactor_environmental_geospreading(power, N_rx, N_tgt):
         rx_path_length=r_rx,
     )
 
-    gs = environmental.GeometricSpreading(power)
-    sf = gs.apply(0, 100e3, 1.0, 0, env, (80e3, 120e3), tt_result)
+    for tx, rx in ((True, True), (True, False), (False, True)):
+        with subtests.test(msg=(f"tx={tx}, rx={rx}")):
+            gs = environmental.GeometricSpreading(power, transmit=tx, receive=rx)
+            sf = gs.apply(0, 100e3, 1.0, 0, env, (80e3, 120e3), tt_result)
 
-    # Should have shape (N_receiver, N_frequencies, N_targets). Since our factor has no
-    # frequency dependency, we set the frequency axis to length 1.
-    assert sf.shape == (N_rx, 1, N_tgt)
+            # Should have shape (N_receiver, N_frequencies, N_targets). Since our factor
+            # has no frequency dependency, we set the frequency axis to length 1.
+            if rx:
+                assert sf.shape == (N_rx, 1, N_tgt)
+            else:
+                assert sf.shape == (1, 1, N_tgt)
 
-    # Expand our input path lengths to the appropriate dimensionality and check.
-    r_tx = r_tx[np.newaxis, np.newaxis, :]
-    r_rx = r_rx[:, np.newaxis, :]
-    if power == 1:
-        assert np.allclose(sf, 1 / (r_tx * r_rx))
-    elif power == 2:
-        assert np.allclose(sf, 1 / (r_tx * r_rx) ** 2)
-    else:
-        assert np.allclose(sf, 1 / np.sqrt(r_tx * r_rx))
+            # Combine our input path lengths.
+            if tx and rx:
+                r = r_tx * r_rx[:, np.newaxis, :]
+            elif tx:
+                r = r_tx
+            else:
+                r = r_rx[:, np.newaxis, :]
+
+            # And check.
+            if power == 1:
+                assert np.allclose(sf, 1 / r)
+            elif power == 2:
+                assert np.allclose(sf, 1 / r**2)
+            else:
+                assert np.allclose(sf, 1 / np.sqrt(r))
+
+
+def test_scalefactor_environmental_error():
+    """scale_factor.environmental: geometric spreading error handling"""
+    with pytest.raises(ValueError, match="transmit and receive.+false"):
+        environmental.GeometricSpreading(power=1, transmit=False, receive=False)
 
 
 @pytest.mark.parametrize("freqmode", ["min", "max", "centre", "all"])
@@ -66,12 +83,13 @@ def test_scalefactor_environmental_geospreading(power, N_rx, N_tgt):
         (4, 8, 7.9, 0.01, 77.2, 7.23171795),
     ],
 )
-def test_scalefactor_environmental_ansliemccolm(freqmode, T, S, pH, z, f, alpha):
+def test_scalefactor_environmental_ansliemccolm(
+    freqmode, T, S, pH, z, f, alpha, subtests
+):
     """scale_factor.environmental: Anslie-McColm attenuation factor"""
     # Convert values from Anslie-McColm paper units to our units.
     z = z * 1000
     f = f * 1000
-    atten = environmental.AnslieMcColmAttenuation(freqmode, pH)
     env = InvariantEnvironment(salinity=S, sound_speed=1500.0, temperature=T)
 
     # Generate some sample path lengths.
@@ -114,24 +132,42 @@ def test_scalefactor_environmental_ansliemccolm(freqmode, T, S, pH, z, f, alpha)
         bounds = (f - 10e3, f + 10e3)
         f_sim = np.full(255, f)
 
-    sf = atten.apply(0, f_sim, 1.0, 0, env, bounds, tt_result)
+    for tx, rx in ((True, True), (True, False), (False, True)):
+        with subtests.test(msg=(f"tx={tx}, rx={rx}")):
+            atten = environmental.AnslieMcColmAttenuation(
+                freqmode, pH, transmit=tx, receive=rx
+            )
+            sf = atten.apply(0, f_sim, 1.0, 0, env, bounds, tt_result)
 
-    # Should have shape (N_receiver, N_frequencies, N_targets). In the single-frequency
-    # modes, we set the frequency axis to length 1.
-    if freqmode == "all":
-        assert sf.shape == (N_rx, 255, N_tgt)
-    else:
-        assert sf.shape == (N_rx, 1, N_tgt)
+            # Should have shape (N_receiver, N_frequencies, N_targets). In the
+            # single-frequency modes, we set the frequency axis to length 1.
+            if freqmode == "all":
+                if rx:
+                    assert sf.shape == (N_rx, 255, N_tgt)
+                else:
+                    assert sf.shape == (1, 255, N_tgt)
+            else:
+                if rx:
+                    assert sf.shape == (N_rx, 1, N_tgt)
+                else:
+                    assert sf.shape == (1, 1, N_tgt)
 
-    # Expand our input path lengths to the appropriate dimensionality and check.
-    r_tx = r_tx[np.newaxis, np.newaxis, :]
-    r_rx = r_rx[:, np.newaxis, :]
-    atten_db = (r_tx + r_rx) * alpha / 1000
-    atten_lin = 10 ** (-atten_db / 20)
-    assert np.allclose(sf, atten_lin)
+            # Expand our input path lengths to the appropriate dimensionality and check.
+            if tx and rx:
+                r = r_tx[np.newaxis, np.newaxis, :] + r_rx[:, np.newaxis, :]
+            elif tx:
+                r = r_tx[np.newaxis, np.newaxis, :]
+            else:
+                r = r_rx[:, np.newaxis, :]
+            atten_db = r * alpha / 1000
+            atten_lin = 10 ** (-atten_db / 20)
+            assert np.allclose(sf, atten_lin)
 
 
 def test_scalefactor_environmental_ansliemccolm_error():
     """scale_factor.environmental: Anslie-McColm attenuation factor error handling"""
     with pytest.raises(ValueError, match="unknown value for frequency"):
         environmental.AnslieMcColmAttenuation("something", 8.1)
+
+    with pytest.raises(ValueError, match="transmit and receive.+false"):
+        environmental.AnslieMcColmAttenuation("centre", 8.1, False, False)

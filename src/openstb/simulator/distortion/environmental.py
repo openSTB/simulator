@@ -1,6 +1,10 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+"""Distortions due to environmental effects."""
+
+from typing import Literal
+
 import numpy as np
 from numpy.typing import ArrayLike
 
@@ -13,9 +17,9 @@ _ = translations.load("openstb.simulator").gettext
 class AnslieMcColmAttenuation(Distortion):
     r"""Attenuation of acoustic energy using the simplified Anslie-McColm model.
 
-    The model presented by Anslie and McColm [1]_ models the attenuation due to the
-    chemical relaxation of both boric acid and magnesium sulphate, and the viscous drag
-    of the water. Along with the frequency and operating depth, the temperature,
+    [Anslie and McColm](https://doi.org/10.1121/1.421258) model the attenuation due to
+    the chemical relaxation of both boric acid and magnesium sulphate, and the viscous
+    drag of the water. Along with the frequency and operating depth, the temperature,
     salinity and pH of the water are parameters. For common values, only the salinity
     has a significant affect. Broadly speaking, the chemical relaxation of boric acid
     dominates below 1kHz, the chemical relaxation of magnesium sulphate dominates from
@@ -27,51 +31,70 @@ class AnslieMcColmAttenuation(Distortion):
     characterises the chemical relaxations in terms of an attenuation coefficient and a
     relaxation frequency. Boric acid has a relaxation frequency
 
-    .. math:: f_1 = 0.78\sqrt{(S/35)}\,e^{T/26}
+    \[
+    f_1 = 0.78\sqrt{(S/35)}\,e^{T/26}
+    \]
 
     and a coefficient
 
-    .. math:: A = 0.106 e^{(\mathrm{pH} - 8)/0.56}
+    \[
+    A = 0.106 e^{(\mathrm{pH} - 8)/0.56}
+    \]
 
     for salinity S and temperature T. Similarly, the relaxation frequency of magnesium
     sulphate is
 
-    .. math:: f_2 = 42e^{T/17}
+    \[
+    f_2 = 42e^{T/17}
+    \]
 
     and its attenuation coefficient is
 
-    .. math:: B = 0.52 \left(1 + \frac{T}{43}\right) \left(\frac{S}{35}\right) e^{-D/6}
+    \[
+    B = 0.52 \left(1 + \frac{T}{43}\right) \left(\frac{S}{35}\right) e^{-D/6}
+    \]
 
     for depth D. Finally, the viscous drag has an attenuation coefficient of
 
-    .. math:: C = 0.00049 e^{-(T/27 + D/17)}.
+    \[
+    C = 0.00049 e^{-(T/27 + D/17)}.
+    \]
 
     The total attenuation, in dB/km, is then given by
 
-    .. math:: \alpha_a(f) = \frac{Af_1f^2}{f_1^2 + f^2} +
+    \[
+    \alpha_a(f) = \frac{Af_1f^2}{f_1^2 + f^2} +
                             \frac{Bf_2f^2}{f_2^2 + f^2} + Cf^2.
-
-    References
-    ----------
-    .. [1] Ainslie, M. A. and McColm, J. G, "A simplified formula for viscous and
-           chemical absorption in sea water". The Journal of the Acoustical Society of
-           America, volume 103 number 3, pp. 1671-1672, 1998.
+    \]
 
     """
 
-    def __init__(self, frequency: str, pH: float = 8.0):
+    def __init__(
+        self,
+        frequency: Literal["min", "centre", "max", "all"],
+        pH: float = 8.0,
+        transmit: bool = True,
+        receive: bool = True,
+    ):
         """
         Parameters
         ----------
-        frequency : {"min", "centre", "max", "all}
+        frequency
             Which frequency or frequencies to calculate the attenuation at. If "min" or
             "max", use the minimum or maximum frequency in the signal, respectively.
             When "centre", use the centre frequency, i.e., (min + max) / 2. If "all",
             calculate the attenuation at each frequency being sampled in the simulation.
-        pH : float
+        pH
             The pH of the water.
+        transmit
+            Whether to apply attenuation for the transmit path length.
+        receive
+            Whether to apply attenuation for the receive path length.
 
         """
+        if not transmit and not receive:
+            raise ValueError(_("transmit and receive cannot both be false"))
+
         if frequency == "min":
             self._mode = 0
         elif frequency == "max":
@@ -86,6 +109,8 @@ class AnslieMcColmAttenuation(Distortion):
             )
 
         self.ph = pH
+        self.transmit = transmit
+        self.receive = receive
 
     def apply(
         self,
@@ -136,7 +161,11 @@ class AnslieMcColmAttenuation(Distortion):
         total = boric + magsulphate + viscous
 
         # Calculate the attenuation in dB for the echoes.
-        r = tt_result.tx_path_length + tt_result.rx_path_length
+        r = np.array(0)
+        if self.transmit:
+            r = r + tt_result.tx_path_length[np.newaxis, :]
+        if self.receive:
+            r = r + tt_result.rx_path_length
         atten_db = total * r[:, np.newaxis, :] / 1000
 
         # And convert back to amplitude.
@@ -146,18 +175,26 @@ class AnslieMcColmAttenuation(Distortion):
 class GeometricSpreading(Distortion):
     """Amplitude distortion due to geometric spreading of the signal."""
 
-    def __init__(self, power: float):
+    def __init__(self, power: float, transmit: bool = True, receive: bool = True):
         """
         Parameters
         ----------
-        power : float
+        power
             The power to use when calculating a one-way spreading loss a = 1/r^power.
             This is applied to the amplitude, so a power of 1 corresponds to spherical
             spreading (1/r in amplitude, 1/r^2 in intensity) and a power of 0.5
             corresponds to cylindrical spreading.
+        transmit
+            Whether to apply geometric spreading for the transmit path length.
+        receive
+            Whether to apply geometric spreading for the receive path length.
 
         """
+        if not transmit and not receive:
+            raise ValueError(_("transmit and receive cannot both be false"))
         self.power = power
+        self.transmit = transmit
+        self.receive = receive
 
     def apply(
         self,
@@ -169,6 +206,11 @@ class GeometricSpreading(Distortion):
         signal_frequency_bounds: tuple[float, float],
         tt_result: TravelTimeResult,
     ) -> np.ndarray:
-        txscale = 1 / (tt_result.tx_path_length**self.power)
-        rxscale = 1 / (tt_result.rx_path_length**self.power)
-        return np.array(S) * (txscale * rxscale)[:, np.newaxis, :]
+        S = np.array(S)
+        if self.transmit:
+            txscale = 1 / (tt_result.tx_path_length**self.power)
+            S = S * txscale[np.newaxis, np.newaxis, :]
+        if self.receive:
+            rxscale = 1 / (tt_result.rx_path_length**self.power)
+            S = S * rxscale[:, np.newaxis, :]
+        return S
