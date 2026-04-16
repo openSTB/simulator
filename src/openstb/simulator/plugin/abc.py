@@ -274,8 +274,8 @@ class Signal(Plugin):
         Parameters
         ----------
         t : array-like
-            The times (in seconds) to sample the signal at with t=0 corresponding to the
-            start of transmission.
+            A one-dimensional array with the times (in seconds) to sample the signal at
+            with t=0 corresponding to the start of transmission.
         baseband_frequency : float
             The reference frequency (in Hz) used to downconvert the signal to the
             analytic baseband.
@@ -368,10 +368,15 @@ class PointTargets(Target):
         Parameters
         ----------
         start_index
-            The index of the first target to be retrieved.
+            The zero-based index of the first point target to be retrieved. An
+            [IndexError][] should be raised if this is less than zero, or if it is not
+            less than the total number of point targets in the object.
         count
-            The number of targets to be retrieved. A value of -1 requests all targets
-            from start_index to the final target.
+            The number of point targets to be retrieved. A value of -1 requests all
+            targets from start_index to the final target. A value of zero, any value
+            less than -1, or a positive number such that the sum of `start_index` and
+            `count` is not less than the total number of point targets in the object
+            should result in an [IndexError][].
 
         Returns
         -------
