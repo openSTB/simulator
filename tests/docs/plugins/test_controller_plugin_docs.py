@@ -4,10 +4,13 @@
 import os
 from pathlib import Path
 
+import pytest
+
 from openstb.simulator.config_loader.toml import TOMLLoader
 from openstb.simulator.plugin import loader, util
 
 
+@pytest.mark.cluster_plugin
 def test_docs_plugins_controller_example(tmp_path: Path):
     """docs: check example controller plugin works"""
     base = Path(__file__).parent.parent.parent.parent

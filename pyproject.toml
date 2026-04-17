@@ -170,7 +170,7 @@ addopts = [
   "--cov=openstb.simulator", "--cov-report=html:tests/coverage",
 ]
 markers = [
-  "cluster: tests which involve starting a cluster (exclude with -m 'not cluster')",
+  "cluster_plugin: tests which use included cluster plugins (exclude with -m 'not cluster_plugins')",
 ]
 filterwarnings = [
   "ignore:Jupyter is migrating its paths:DeprecationWarning",

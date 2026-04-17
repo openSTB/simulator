@@ -101,28 +101,24 @@ class DaskLocalCluster(DaskCluster):
             security=self.security,
         )
 
+        self._client = self._cluster.get_client()
+
         if self.dashboard_address is not None:
-            if self.dashboard_address.startswith(":"):
-                url = f"http://127.0.0.1{self.dashboard_address}"
-            else:
-                url = f"http://{self.dashboard_address}"
+            url = self._cluster.dashboard_link
+            if url.endswith("/status"):
+                url = url[:-7]
             logger.info(_("Dask dashboard is at %(url)s"), {"url": url})
 
     @property
     def client(self) -> distributed.Client:
-        if self._cluster is None:
-            raise RuntimeError(_("must initialise the cluster before getting a client"))
-
         if self._client is None:
-            self._client = self._cluster.get_client()
+            raise RuntimeError(_("must initialise the cluster before getting a client"))
         return self._client
 
     def terminate(self):
         logger = logging.getLogger(__name__)
         logger.info(_("Shutting down local Dask cluster"))
-        if self._client is not None:
-            self._client.shutdown()
-            self._client = None
         if self._cluster is not None:
             self._cluster.close()
             self._cluster = None
+            self._client = None

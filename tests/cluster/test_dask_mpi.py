@@ -22,7 +22,7 @@ except (FileNotFoundError, subprocess.CalledProcessError):
     pytest.skip("mpirun not available", allow_module_level=True)
 
 
-@pytest.mark.cluster
+@pytest.mark.cluster_plugin
 def test_cluster_dask_mpi(tmp_path):
     # Generate a test script which will start the cluster, run some very simple tasks
     # and print the resulting sets of data.

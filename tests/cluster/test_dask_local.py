@@ -8,15 +8,30 @@ from dask.distributed import wait
 import dask.system
 import distributed.system
 import pytest
-import requests
+import requests  # type:ignore[import-untyped]
 
 from openstb.simulator.cluster.dask_local import DaskLocalCluster
 
 
-@pytest.mark.cluster
-def test_cluster_dask_local():
+@pytest.fixture
+def ensure_terminated(request):
+    """Fixture to ensure a cluster plugin is terminated.
+
+    Within the test function, use `ensure_terminated.append(c)` to register a plugin
+    instance for checking.
+
+    """
+    registered = []
+    yield registered
+    for c in registered:
+        c.terminate()
+
+
+@pytest.mark.cluster_plugin
+def test_cluster_dask_local(ensure_terminated):
     """cluster: basic DaskLocalCluster operation"""
     c = DaskLocalCluster(workers=2, total_memory=0.01, dashboard_address=None)
+    ensure_terminated.append(c)
 
     c.initialise()
     client = c.client
@@ -40,13 +55,14 @@ def test_cluster_dask_local():
     c.terminate()
 
 
-@pytest.mark.cluster
-def test_cluster_dask_local_dashboard(caplog):
+@pytest.mark.cluster_plugin
+def test_cluster_dask_local_dashboard(caplog, ensure_terminated):
     """cluster: DaskLocalCluster dashboard setting"""
     caplog.set_level(logging.INFO)
 
     # ":0" -> use a random available port.
     c = DaskLocalCluster(workers=2, total_memory=0.01, dashboard_address=":0")
+    ensure_terminated.append(c)
     c.initialise()
 
     # Make sure initialising twice does not error.
@@ -55,16 +71,20 @@ def test_cluster_dask_local_dashboard(caplog):
     # Look through the logs to find the reported address.
     dashboard = None
     for record in caplog.records:
-        if record.name != "distributed.scheduler":
-            continue
-        if "dashboard at:" in record.message:
+        if "dashboard at" in record.message or "dashboard is at" in record.message:
             _, dashboard = record.message.rsplit(" ", 1)
 
     assert dashboard is not None, "dashboard address not reported"
 
     # Attempt to access the status page.
-    response = requests.get(dashboard)
-    assert response.status_code == 200
+    status = None
+    try:
+        response = requests.get(dashboard)
+    except requests.exceptions.ConnectionError:
+        pass
+    else:
+        status = response.status_code
+    assert status == 200, "could not access dashboard"
 
     c.terminate()
 
