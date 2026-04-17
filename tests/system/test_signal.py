@@ -163,3 +163,152 @@ def test_system_signal_lfm_error():
 
     with pytest.raises(TypeError, match="missing .+ argument: 'alpha'"):
         signal.LFMChirp(100e3, 140e3, 0.08, 120, window={"name": "tukey"})
+
+
+@pytest.mark.parametrize(
+    "f_start,f_stop,duration,spl,rms_after_window",
+    [
+        (70e3, 90e3, 10e-3, 120, False),
+        (90e3, 70e3, 12.5e-3, 180, False),
+        (300e3, 330e3, 9e-3, 180, True),
+    ],
+)
+def test_system_signal_hfm(f_start, f_stop, duration, spl, rms_after_window):
+    """system.signal: HFM signal without windowing"""
+    sig = signal.HFMChirp(
+        f_start,
+        f_stop,
+        duration,
+        spl,
+        rms_after_window=True,
+        window=UniformWindow() if rms_after_window else None,
+    )
+    assert sig.duration == pytest.approx(duration)
+    assert sig.minimum_frequency == pytest.approx(min(f_start, f_stop))
+    assert sig.maximum_frequency == pytest.approx(max(f_start, f_stop))
+
+    # This should be disabled if no window was set, even though we set True in init.
+    assert sig.rms_after_window == rms_after_window
+
+    # Sample at twice Nyquist.
+    BW = np.abs(f_start - f_stop)
+    dt = 0.5 / BW
+
+    # Magnitude of the complex exponential is equivalent to RMS.
+    A = 1e-6 * 10 ** (spl / 20)
+
+    # Include samples either side and check the magnitude. Skip the edge samples in this
+    # as they depend on relative timing of samples.
+    t = np.arange(-400 * dt, duration + 400 * dt, dt)
+    baseband_freq = (f_start + f_stop) / 2
+    s = sig.sample(t, baseband_freq)
+    assert np.allclose(np.abs(s[:399]), 0)
+    assert np.allclose(np.abs(s[-399:]), 0)
+    assert np.allclose(np.abs(s[401:-401]), A)
+
+    # Check the instantaneous frequency is what we expect. We ignore the first and last
+    # sample of the chirp due to edge effects in the calculation. We also use a
+    # different parametrisation for this chirp than the implementation.
+    inst_f = baseband_freq + np.gradient(np.unwrap(np.angle(s)), dt) / (2 * np.pi)
+    _t = 2 * (t - duration / 2)
+    denom = f_start * (duration + _t) + f_stop * (duration - _t)
+    expected = 2 * f_start * f_stop * duration / denom
+    assert np.allclose(inst_f[401:-401], expected[401:-401])
+
+    # As a double-check, the period should be linearly modulated i.e., should have a
+    # constant rate of change.
+    inst_p = 1 / inst_f
+    dp = np.diff(inst_p[401:-401])
+    assert np.allclose(dp, dp[0])
+
+    # Repeat with a non-centred baseband frequency.
+    baseband_freq += BW / 3
+    s = sig.sample(t, baseband_freq)
+    assert np.allclose(np.abs(s[:399]), 0)
+    assert np.allclose(np.abs(s[-399:]), 0)
+    assert np.allclose(np.abs(s[401:-401]), A)
+    inst_f = baseband_freq + np.gradient(np.unwrap(np.angle(s)), dt) / (2 * np.pi)
+    assert np.allclose(inst_f[401:-401], expected[401:-401])
+
+
+def test_system_signal_hfm_window():
+    """system.signal: HFM signal windowing"""
+    sig = signal.HFMChirp(
+        110e3, 90e-3, 0.01, rms_spl=120, rms_after_window=False, window={"name": "hann"}
+    )
+    t = np.linspace(0, 0.01, 151)
+    baseband_freq = 100e3
+    s = sig.sample(t, baseband_freq)
+    assert np.allclose(np.abs(s), np.cos(np.pi * (t - 0.005) / 0.01) ** 2)
+
+
+@pytest.mark.parametrize(
+    "spl,window",
+    [
+        (180, None),
+        (200, {"name": "hann"}),
+        (195.5, {"name": "tukey", "parameters": {"alpha": 0.15}}),
+    ],
+)
+def test_system_signal_hfm_spl(spl, window):
+    """system.signal: HFM signal RMS SPL options"""
+    sig = signal.HFMChirp(
+        70e3,
+        100e3,
+        0.008,
+        rms_spl=spl,
+        rms_after_window=window is not None,
+        window=window,
+    )
+    magtol = 0.005 if window else 1e-7
+
+    t = np.arange(0.5e-3, 7.5e-3, 1 / (75e3))
+    s = sig.sample(t, 85e3)
+    rms = np.sqrt(np.mean(np.abs(s) ** 2))
+    expected = 1e-6 * 10 ** (spl / 20)
+    assert np.allclose(rms, expected, rtol=magtol)
+
+
+def test_system_signal_hfm_rms_variable():
+    """system.signal: HFM signal with variable sample spacing"""
+    sig = signal.HFMChirp(
+        200e3,
+        220e3,
+        10e-3,
+        rms_spl=180,
+        rms_after_window=True,
+        window={"name": "tukey", "parameters": {"alpha": 0.5}},
+    )
+
+    # Generate a time vector with jitter. We go well above the Nyquist limit for the
+    # chirp for good interpolation later.
+    fs = 180e3
+    N = int(np.round(2 * 10e-3 * fs))
+    rng = np.random.default_rng(88174571)
+    dt = rng.uniform(0.2 / fs, 1.2 / fs, N)
+    t = np.cumsum(dt)
+    t = t[t <= 10e-3]
+
+    # We will shuffle the time vector to ensure that it is not assumed to be sorted.
+    idx = rng.permutation(np.arange(len(t)))
+    revidx = np.argsort(idx)
+
+    # Sample the signal and sort back into order.
+    s = sig.sample(t[idx], 210e3)[revidx]
+
+    # Interpolate to a regular spacing and check.
+    reg = interpolate.CubicSpline(t, s)
+    t_reg = np.arange(0, 10e-3, 4 / fs)
+    s_reg = reg(t_reg)
+    rms_reg = np.sqrt(np.mean(np.abs(s_reg) ** 2))
+    expected = 1e-6 * 10 ** (180 / 20)
+    assert np.isclose(rms_reg, expected, atol=0.2, rtol=0)
+
+
+def test_system_signal_hfm_error():
+    """system.signal: HFM signal error handling"""
+    with pytest.raises(ValueError, match="no .+window plugin .+ installed"):
+        signal.HFMChirp(100e3, 140e3, 0.08, 120, window={"name": "a_window_name"})
+
+    with pytest.raises(TypeError, match="missing .+ argument: 'alpha'"):
+        signal.HFMChirp(100e3, 140e3, 0.08, 120, window={"name": "tukey"})

@@ -111,6 +111,7 @@ matlab = "openstb.simulator.result_converter.matlab:MATLABConverter"
 numpy = "openstb.simulator.result_converter.numpy:NumpyConverter"
 
 [project.entry-points."openstb.simulator.signal"]
+hfm_chirp = "openstb.simulator.system.signal:HFMChirp"
 lfm_chirp = "openstb.simulator.system.signal:LFMChirp"
 
 [project.entry-points."openstb.simulator.signal_window"]
