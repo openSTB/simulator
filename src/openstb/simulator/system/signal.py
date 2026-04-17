@@ -10,7 +10,21 @@ from openstb.simulator.types import PluginOrSpec
 
 
 class LFMChirp(abc.Signal):
-    """Linear frequency modulated chirp."""
+    r"""Linear frequency modulated chirp.
+
+    For a start frequency $f_a$, stop frequency $f_b$ and chirp length $\tau$, we can
+    calculate the chirp rate $K = (f_b - f_a) / \tau$. In the passband, the LFM chirp is
+    then
+
+    \[
+    s(t) = \exp (j\pi t  (2f_a + Kt))
+    \qquad
+    0 \leq t \leq \tau,
+    \]
+
+    which has a linear instantaneous frequency $f(t) = f_a + Kt$.
+
+    """
 
     def __init__(
         self,
@@ -36,7 +50,7 @@ class LFMChirp(abc.Signal):
         rms_after_window
             If True, scale the signal to the desired RMS SPL after applying the window.
             If False, scale before applying the window, meaning the windowed signal will
-            have a lower RMS SPL.
+            have a lower RMS SPL. If no window is applied, this parameter is ignored.
         window
             Plugin specification for a signal window to apply to the samples of the
             signal.
@@ -48,7 +62,7 @@ class LFMChirp(abc.Signal):
         self._maximum_frequency = max(f_start, f_stop)
         self._duration = duration
         self.rms_spl = rms_spl
-        self.rms_after_window = rms_after_window
+        self.rms_after_window = rms_after_window and (window is not None)
         self.window = None if window is None else signal_window(window)
 
     @property
@@ -78,9 +92,10 @@ class LFMChirp(abc.Signal):
         K = (self.f_stop - self.f_start) / self._duration
         s[valid] = np.exp(1j * np.pi * tv * (2 * fd + K * tv))
 
-        # Calculate the source level in Pascal.
+        # Calculate the desired source level in Pascal.
         level = 10 ** (self.rms_spl / 20) * 1e-6
 
+        # Not windowing => the current source level is 1Pa.
         if not self.rms_after_window:
             s *= level
 
@@ -88,7 +103,19 @@ class LFMChirp(abc.Signal):
             s *= self.window.get_samples(t, self._duration, fill_value=0)
 
         if self.rms_after_window:
-            current = np.sqrt(np.mean(np.abs(s[valid]) ** 2))
+            # Don't assume the sample times are sorted. argsort() gives us the indices
+            # to select to get a sorted array.
+            idx = np.argsort(tv)
+
+            # And then sort the valid part of the output.
+            t_s = tv[idx]
+            s_s = s[valid][idx]
+
+            # Weighting the mean allows for a variable sample spacing.
+            dt = np.diff(t_s)
+            current = np.sqrt(np.average(np.abs(s_s[1:]) ** 2, weights=dt))
+
+            # Which we can then adjust as desired.
             s *= level / current
 
         return s

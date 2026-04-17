@@ -2,9 +2,24 @@
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
 import numpy as np
+from numpy.typing import ArrayLike
 import pytest
+from scipy import interpolate
 
+from openstb.simulator.plugin.abc import SignalWindow
 from openstb.simulator.system import signal
+
+
+# For when we want to trigger window behaviour without changing the signal.
+class UniformWindow(SignalWindow):
+    def get_samples(
+        self, t: ArrayLike, duration: float, fill_value: float = 0
+    ) -> np.ndarray:
+        t = np.asarray(t)
+        samples = np.full_like(t, 1.0)
+        samples[t < 0] = 0
+        samples[t > duration] = 0
+        return samples
 
 
 @pytest.mark.parametrize(
@@ -18,11 +33,19 @@ from openstb.simulator.system import signal
 def test_system_signal_lfm(f_start, f_stop, duration, spl, rms_after_window):
     """system.signal: LFM signal without windowing"""
     sig = signal.LFMChirp(
-        f_start, f_stop, duration, spl, rms_after_window=rms_after_window
+        f_start,
+        f_stop,
+        duration,
+        spl,
+        rms_after_window=True,
+        window=UniformWindow() if rms_after_window else None,
     )
     assert sig.duration == pytest.approx(duration)
     assert sig.minimum_frequency == pytest.approx(min(f_start, f_stop))
     assert sig.maximum_frequency == pytest.approx(max(f_start, f_stop))
+
+    # This should be disabled if no window was set, even though we set True in init.
+    assert sig.rms_after_window == rms_after_window
 
     # Sample at twice Nyquist.
     BW = np.abs(f_start - f_stop)
@@ -95,6 +118,42 @@ def test_system_signal_lfm_spl(spl, window):
     rms = np.sqrt(np.mean(np.abs(s) ** 2))
     expected = 1e-6 * 10 ** (spl / 20)
     assert np.allclose(rms, expected, rtol=magtol)
+
+
+def test_system_signal_lfm_rms_variable():
+    """system.signal: LFM signal with variable sample spacing"""
+    sig = signal.LFMChirp(
+        200e3,
+        220e3,
+        10e-3,
+        rms_spl=180,
+        rms_after_window=True,
+        window={"name": "tukey", "parameters": {"alpha": 0.5}},
+    )
+
+    # Generate a time vector with jitter. We go well above the Nyquist limit for the
+    # chirp for good interpolation later.
+    fs = 180e3
+    N = int(np.round(2 * 10e-3 * fs))
+    rng = np.random.default_rng(88174571)
+    dt = rng.uniform(0.2 / fs, 1.2 / fs, N)
+    t = np.cumsum(dt)
+    t = t[t <= 10e-3]
+
+    # We will shuffle the time vector to ensure that it is not assumed to be sorted.
+    idx = rng.permutation(np.arange(len(t)))
+    revidx = np.argsort(idx)
+
+    # Sample the signal and sort back into order.
+    s = sig.sample(t[idx], 210e3)[revidx]
+
+    # Interpolate to a regular spacing and check.
+    reg = interpolate.CubicSpline(t, s)
+    t_reg = np.arange(0, 10e-3, 4 / fs)
+    s_reg = reg(t_reg)
+    rms_reg = np.sqrt(np.mean(np.abs(s_reg) ** 2))
+    expected = 1e-6 * 10 ** (180 / 20)
+    assert np.isclose(rms_reg, expected, atol=0.2, rtol=0)
 
 
 def test_system_signal_lfm_error():
