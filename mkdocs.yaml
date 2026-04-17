@@ -105,6 +105,7 @@ nav:
       - plugins/ping_times/constant_interval.md
       - plugins/ping_times/interface.md
   - Release notes:
+    - release_notes/v0.8.0.md
     - release_notes/v0.7.0.md
     - release_notes/v0.6.1.md
     - release_notes/v0.6.0.md
