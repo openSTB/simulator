@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+"""Convert simulation results to NumPy files."""
+
 import os
 from pathlib import Path
 from typing import Any
@@ -17,24 +19,27 @@ class NumpyConverter(ResultConverter):
     """Convert simulation results to a NumPy file.
 
     The writes the data as a NumPy .npz file with the following variables:
-    * ``baseband_frequency``: the frequency used to baseband the data
-    * ``ping_start_time``: seconds since the start of the trajectory that the pings
-      were sent
-    * ``pressure``: the simulated pressure at each receiver
-    * ``pressure_dimensions``: string array giving the order of dimensions in
-      ``pressure``.
-    * ``sample_time``: seconds since the start of its ping that each sample was captured
 
-    Parameters
-    ----------
-    filename : path-like
-        The path to save the converted results at.
-    compress : Boolean
-        If True, compress the data while writing.
+    * `baseband_frequency`: the frequency used to baseband the data
+    * `ping_start_time`: seconds since the start of the trajectory that the pings
+      were sent
+    * `pressure`: the simulated pressure at each receiver
+    * `pressure_dimensions`: string array giving the order of dimensions in
+      `pressure`.
+    * `sample_time`: seconds since the start of its ping that each sample was captured
 
     """
 
-    def __init__(self, filename: os.PathLike[str] | str, compress=False):
+    def __init__(self, filename: os.PathLike[str] | str, compress: bool = False):
+        """
+        Parameters
+        ----------
+        filename
+            The path to save the converted results at.
+        compress
+            If True, compress the data while writing.
+
+        """
         self.filename = Path(filename)
         self.compress = compress
         if self.filename.exists():

@@ -19,7 +19,7 @@ detailed checking.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import IntEnum
 from typing import Any, Generic
 
 import dask.distributed
@@ -731,12 +731,18 @@ class Distortion(Plugin):
         pass
 
 
-class ResultFormat(Enum):
+class ResultFormat(IntEnum):
     """Standard formats the simulation type plugins may use for storing results."""
 
-    #: A Zarr group for baseband pressure simulations. This has variables sample_time,
-    #: ping_start_time and pressure, and attributes baseband_frequency and sample_rate.
     ZARR_BASEBAND_PRESSURE = 1
+    """A Zarr format for baseband pressure simulations.
+
+    This uses a Zarr group to store the simulation results. This has variables
+    `sample_time`, `ping_start_time` and `pressure`, with the latter being complex
+    baseband values in Pascal. It also contains the attributes `baseband_frequency` and
+    `sample_rate`.
+
+    """
 
 
 class ResultConverter(Plugin):

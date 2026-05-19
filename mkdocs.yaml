@@ -50,6 +50,7 @@ plugins:
             - url: https://docs.python.org/3/objects.inv
               domains: [py, std]
             - https://numpy.org/doc/stable/objects.inv
+            - https://docs.scipy.org/doc/scipy/objects.inv
             - url: https://docs.dask.org/en/stable/objects.inv
               domains: [py, std]
             - url: https://distributed.dask.org/en/stable/objects.inv
@@ -91,6 +92,8 @@ nav:
     - getting_started/install.md
     - Examples:
       - examples/simple_points.md
+  - Concepts:
+    - concepts/result_format.md
   - Plugins:
     - plugins/index.md
     - plugins/specifying.md
@@ -104,6 +107,11 @@ nav:
       - plugins/ping_times/constant_distance.md
       - plugins/ping_times/constant_interval.md
       - plugins/ping_times/interface.md
+    - Result converter:
+      - Overview: plugins/result_converter/overview.md
+      - MATLAB: plugins/result_converter/matlab.md
+      - NumPy: plugins/result_converter/numpy.md
+      - Plugin interface: plugins/result_converter/interface.md
   - Release notes:
     - release_notes/v0.8.0.md
     - release_notes/v0.7.0.md
