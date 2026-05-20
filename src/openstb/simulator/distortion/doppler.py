@@ -28,9 +28,9 @@ class DopplerDistortion(Distortion):
         Parameters
         ----------
         calculate_c_rx : Boolean
-            If True, calculate the platform velocity at the reception time and position
-            separately for each target. If False, use the platform velocity at the time
-            and position the ping transmission started for all calculations.
+            If True, use the sound speed at the reception time and position separately
+            for each target. If False, use the sound speed at the time and position the
+            ping transmission started for all calculations.
 
         """
         self.calculate_c_rx = calculate_c_rx

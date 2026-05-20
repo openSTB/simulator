@@ -11,6 +11,7 @@ theme:
   font: false
   features:
     - content.code.copy
+    - content.footnote.tooltips
     - navigation.tabs
     - navigation.tabs.sticky
     - search.highlight
@@ -71,6 +72,7 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - footnotes
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.snippets
@@ -102,6 +104,13 @@ nav:
       - Overview: plugins/controller/overview.md
       - plugins/controller/simple_points.md
       - plugins/controller/interface.md
+    - Distortion:
+      - Overview: plugins/distortion/overview.md
+      - plugins/distortion/anslie_mccolm.md
+      - plugins/distortion/doppler.md
+      - plugins/distortion/geometric_spreading.md
+      - plugins/distortion/rectangular_beampattern.md
+      - Plugin interface: plugins/distortion/interface.md
     - Ping times:
       - Overview: plugins/ping_times/overview.md
       - plugins/ping_times/constant_distance.md

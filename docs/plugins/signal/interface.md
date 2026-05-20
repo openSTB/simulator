@@ -5,7 +5,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 
 # Signal plugin interface
 
-The base class defining the interface expected of a result converter plugin is
+The base class defining the interface expected of a signal plugin is
 [plugin.abc.Signal][openstb.simulator.plugin.abc.Signal]. Plugins are registered under
 the `openstb.simulator.signal` entry point.
 

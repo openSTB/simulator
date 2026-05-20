@@ -25,48 +25,6 @@ class AnslieMcColmAttenuation(Distortion):
     dominates below 1kHz, the chemical relaxation of magnesium sulphate dominates from
     10kHz to 100kHz and the viscous drag dominates above 200kHz.
 
-    Notes
-    -----
-    The model in the paper takes the frequency in kHz and the depth in kilometres. It
-    characterises the chemical relaxations in terms of an attenuation coefficient and a
-    relaxation frequency. Boric acid has a relaxation frequency
-
-    \[
-    f_1 = 0.78\sqrt{(S/35)}\,e^{T/26}
-    \]
-
-    and a coefficient
-
-    \[
-    A = 0.106 e^{(\mathrm{pH} - 8)/0.56}
-    \]
-
-    for salinity S and temperature T. Similarly, the relaxation frequency of magnesium
-    sulphate is
-
-    \[
-    f_2 = 42e^{T/17}
-    \]
-
-    and its attenuation coefficient is
-
-    \[
-    B = 0.52 \left(1 + \frac{T}{43}\right) \left(\frac{S}{35}\right) e^{-D/6}
-    \]
-
-    for depth D. Finally, the viscous drag has an attenuation coefficient of
-
-    \[
-    C = 0.00049 e^{-(T/27 + D/17)}.
-    \]
-
-    The total attenuation, in dB/km, is then given by
-
-    \[
-    \alpha_a(f) = \frac{Af_1f^2}{f_1^2 + f^2} +
-                            \frac{Bf_2f^2}{f_2^2 + f^2} + Cf^2.
-    \]
-
     """
 
     def __init__(
