@@ -27,11 +27,11 @@ def quaternion_from_vectors(
         direction of target.
 
     """
-    reference = np.atleast_1d(reference)
+    reference = np.atleast_1d(reference).astype(float)
     if reference.shape[-1] != 3:
         raise ValueError("last axis of reference must have size 3")
 
-    target = np.atleast_1d(target)
+    target = np.atleast_1d(target).astype(float)
     if target.shape[-1] != 3:
         raise ValueError("last aixs of target must have size 3")
 
@@ -41,11 +41,11 @@ def quaternion_from_vectors(
         )
 
     # Normalise the vectors.
-    reference = reference / np.linalg.norm(reference, axis=-1, keepdims=True)
-    target = target / np.linalg.norm(target, axis=-1, keepdims=True)
+    reference /= np.linalg.norm(reference, axis=-1, keepdims=True)
+    target /= np.linalg.norm(target, axis=-1, keepdims=True)
 
     # Calculate the dot product and determine parallel cases.
-    dp = np.vecdot(reference, target, axis=-1)
+    dp = np.vecdot(reference, target, axis=-1)  # type:ignore[call-overload]
     parallel = np.isclose(dp, 1)
     antiparallel = np.isclose(dp, -1)
 

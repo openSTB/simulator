@@ -3,7 +3,7 @@
 
 import numpy as np
 import pytest
-from scipy.signal import get_window
+from scipy.signal import get_window  # type:ignore[import-not-found]
 
 from openstb.simulator.system import signal_windows
 

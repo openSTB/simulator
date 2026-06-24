@@ -61,11 +61,11 @@ def test_docs_plugin_trajectory_example(tmp_path: Path):
 
     ori = inst.orientation(t)
     assert ori.shape == (5, 4)
-    assert np.all(np.isnan(ori[0]))
-    assert np.allclose(ori[1], [1, 0, 0, 0])
-    assert np.allclose(ori[2], [1, 0, 0, 0])
-    assert np.allclose(ori[3], [np.cos(np.pi / 4), 0, 0, np.sin(np.pi / 4)])
-    assert np.all(np.isnan(ori[4]))
+    assert np.all(np.isnan(ori[0]))  # type:ignore[call-overload]
+    assert np.allclose(ori[1].ndarray, [1, 0, 0, 0])
+    assert np.allclose(ori[2].ndarray, [1, 0, 0, 0])
+    assert np.allclose(ori[3].ndarray, [np.cos(np.pi / 4), 0, 0, np.sin(np.pi / 4)])
+    assert np.all(np.isnan(ori[4]))  # type:ignore[call-overload]
 
     vel = inst.velocity(t)
     assert vel.shape == (5, 3)

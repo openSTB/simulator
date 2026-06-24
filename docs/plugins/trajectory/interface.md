@@ -71,6 +71,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 from numpy.typing import ArrayLike
+import quaternionic
 
 from openstb.simulator.plugin.abc import Trajectory
 from openstb.simulator.util import quaternion_from_vectors
@@ -146,7 +147,7 @@ class TwoSegmentLinear(Trajectory):
         pos[invalid] = np.nan
         return pos
 
-    def orientation(self, t: ArrayLike) -> np.ndarray:
+    def orientation(self, t: ArrayLike):
         # Start with orientation of segment 1.
         t = np.asarray(t)
         ori = np.full(t.shape + (4,), quaternion_from_vectors([1, 0, 0], self._diff1))
@@ -159,7 +160,7 @@ class TwoSegmentLinear(Trajectory):
         # And get rid of values outside the duration.
         invalid = (t < 0) | (t > self.duration)
         ori[invalid] = np.nan
-        return ori
+        return quaternionic.array(ori)
 
     def velocity(self, t: ArrayLike) -> np.ndarray:
         t = np.asarray(t)

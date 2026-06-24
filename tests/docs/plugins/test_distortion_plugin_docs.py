@@ -42,7 +42,7 @@ def test_docs_plugin_distortion_example(tmp_path: Path):
     )
 
     # And apply it.
-    f = np.arange(50e3, 60e3, 10)
-    S = np.ones((1, len(f), 1), dtype=complex)
-    Smod = inst.apply(0, f, S, 55e3, None, (50e3, 60e3), None)
-    assert np.allclose(np.abs(Smod[0, :, 0]), 1 + ((f - 50e3) * 0.2 / 9990))
+    freq = np.arange(50e3, 60e3, 10)
+    S = np.ones((1, len(freq), 1), dtype=complex)
+    Smod = inst.apply(0, freq, S, 55e3, None, (50e3, 60e3), None)  # type:ignore[arg-type]
+    assert np.allclose(np.abs(Smod[0, :, 0]), 1 + ((freq - 50e3) * 0.2 / 9990))

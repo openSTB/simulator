@@ -6,7 +6,6 @@ from pathlib import Path
 import numpy as np
 
 from openstb.simulator.plugin import loader
-from openstb.simulator.system.trajectory import Linear
 
 
 def test_docs_plugin_environment_example(tmp_path: Path):
