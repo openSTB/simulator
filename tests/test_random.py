@@ -3,7 +3,7 @@
 
 import numpy as np
 import pytest
-from scipy.stats import kstest  # type:ignore[import-not-found]
+from scipy.stats import kstest, norm, uniform  # type:ignore[import-not-found]
 
 from openstb.simulator import random
 from openstb.simulator.plugin.abc import DaskCluster
@@ -18,14 +18,18 @@ def test_random_chunked_rng_basic(method):
 
     # Use a Kolmogorov-Smirnov test with a confidence level of 95%. Note that for the
     # kstest() function the uniform distribution is parametrised as (min, width).
+    if method == "normal":
+        cdf = norm(0, 1).cdf
+    else:
+        cdf = uniform(0, 1).cdf
     cdf = "norm" if method == "normal" else method
-    stat, pvalue = kstest(samples.flat, cdf, (0, 1))
+    stat, pvalue = kstest(samples.flat, cdf)
     assert pvalue > 0.05, "samples do not match the requested distribution"
 
     # Request the next chunk and repeat the check.
     samples2 = rng.sample(5000, 5000)
     assert samples2.shape == (5000, 3)
-    stat, pvalue = kstest(samples2.flat, cdf, (0, 1))
+    stat, pvalue = kstest(samples2.flat, cdf)
     assert pvalue > 0.05, "samples do not match the requested distribution"
 
     # Ensure the samples were different.
@@ -55,7 +59,7 @@ def test_random_chunked_rng_basic(method):
     other = rng3.sample(5000, 5000)
     assert not np.any(np.isclose(other, samples2))
     assert other.shape == (5000, 3)
-    stat, pvalue = kstest(other.flat, cdf, (0, 1))
+    stat, pvalue = kstest(other.flat, cdf)
     assert pvalue > 0.05, "samples do not match the requested distribution"
 
 
