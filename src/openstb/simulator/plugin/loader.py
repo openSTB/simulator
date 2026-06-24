@@ -144,8 +144,18 @@ def load_plugin_class(group: str, name: str) -> type[T_Plugin]:
                 )
             )
 
-    # Assume it is an installed module.
-    mod = importlib.import_module(modname_or_path)
+    # Assume it is an installed module. If this intended as a filename but the file does
+    # not exist, we will get either a ModuleNotFoundError or, if it starts with ., a
+    # TypeError as a relative import requires package details.
+    try:
+        mod = importlib.import_module(modname_or_path)
+    except (ModuleNotFoundError, TypeError):
+        raise ValueError(
+            _(
+                "could not import plugin from {path}. Is the module not installed or "
+                "the file missing?"
+            ).format(path=path)
+        )
     return getattr(mod, classname)
 
 
