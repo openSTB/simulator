@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+"""Support for finding and loading plugins."""
+
 import hashlib
 import importlib.metadata
 import importlib.util
@@ -38,10 +40,10 @@ def registered_plugins(
 
     Parameters
     ----------
-    group : str
+    group
         The name of the entry point group to list plugins for, e.g.,
         "openstb.simulator.trajectory".
-    load : Boolean
+    load
         If True, include the loaded plugins in the return. If False, only report the
         name and source of each plugin.
 
@@ -81,10 +83,10 @@ def load_plugin_class(group: str, name: str) -> type[T_Plugin]:
 
     Parameters
     ----------
-    group : str
+    group
         The name of the entry point group that the plugin belongs to, e.g.,
         "openstb.simulator.trajectory".
-    name : str
+    name
         The user-specified name of the plugin.
 
     Returns
@@ -189,10 +191,10 @@ def register_loader(
 
     Parameters
     ----------
-    docstring : Boolean, optional
+    docstring
         Whether to set a docstring for the class. If None (the default), then a
         docstring will only be set if one does not already exist.
-    name : str, optional
+    name
         The name of the plugin type to use in the docstring. If not specified, the
         class name will be used.
 
@@ -241,10 +243,10 @@ def load_plugin(group: str, plugin_spec: PluginOrSpec[T_Plugin]) -> T_Plugin:
 
     Parameters
     ----------
-    group : str
+    group
         The name of the entry point group that the plugin belongs to, e.g.,
         "openstb.simulator.trajectory".
-    plugin_spec : dict, Plugin
+    plugin_spec
         If a dictionary, this specifies the name and parameters of the plugin to
         load. Otherwise, it is assumed to be an instance of a compatible class and is
         returned unchanged.
