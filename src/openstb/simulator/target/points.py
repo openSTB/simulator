@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
+from collections.abc import Iterator
 from typing import Literal
 
 import numpy as np
@@ -355,3 +356,40 @@ class PointLine(PointTargets):
         reflectivity = np.full(count, self.reflectivity)
 
         return position, reflectivity
+
+
+def target_chunk_iterator(
+    targets: list[PointTargets],
+    points_per_chunk: int,
+) -> Iterator[tuple[int, int, np.ndarray, np.ndarray]]:
+    """Iterator over chunks of all points from a list of targets.
+
+    Parameters
+    ----------
+    targets
+        A list of point target plugins.
+    points_per_chunk
+        How many points to include in each chunk.
+
+    Returns
+    -------
+    target_idx : int
+        The zero-based index of the target plugin in the input list.
+    chunk_idx : int
+        The zero-based index (within the plugin) of the first point in the
+        chunk.
+    position : np.ndarray
+        An (N, 3) array of the position of the points in the chunk.
+    reflectivity : np.ndarray
+        An (N,) array of the reflectivity of the points in the chunk.
+
+    """
+    for idx, target in enumerate(targets):
+        N = len(target)
+        for n in range(0, N, points_per_chunk):
+            if (n + points_per_chunk) < N:
+                count = points_per_chunk
+            else:
+                count = -1
+
+            yield idx, n, *target.get_chunk(n, count)

@@ -16,6 +16,7 @@ import zarr
 
 from openstb.i18n.support import translations
 from openstb.simulator.plugin import abc
+from openstb.simulator.target.points import target_chunk_iterator
 
 _ = translations.load("openstb.simulator").gettext
 
@@ -100,43 +101,6 @@ class _CommonSettings:
 
     # Distortions to apply to the echo before it reaches the receiver.
     echo_distortion: list[abc.Distortion]
-
-
-def _target_chunk_iterator(
-    targets: list[abc.PointTargets],
-    points_per_chunk: int,
-) -> Iterator[tuple[int, int, np.ndarray, np.ndarray]]:
-    """Iterator over all available target chunks.
-
-    Parameters
-    ----------
-    targets
-        The targets to simulate.
-    points_per_chunk
-        How many points to simulate in each chunk.
-
-    Returns
-    -------
-    target_idx : int
-        The zero-based index of the target in the input list.
-    chunk_idx : int
-        The zero-based index (within the original target) of the first point in the
-        chunk.
-    position : np.ndarray
-        An (N, 3) array of the position of the points in the chunk.
-    reflectivity : np.ndarray
-        An (N,) array of the reflectivity of the points in the chunk.
-
-    """
-    for idx, target in enumerate(targets):
-        N = len(target)
-        for n in range(0, N, points_per_chunk):
-            if (n + points_per_chunk) < N:
-                count = points_per_chunk
-            else:
-                count = -1
-
-            yield idx, n, *target.get_chunk(n, count)
 
 
 def _point_simulation_chunk(
@@ -602,7 +566,7 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
 
         # Have completed a ping+receiver, reset the target iterator for the next.
         if self.target_iter is None:
-            self.target_iter = _target_chunk_iterator(
+            self.target_iter = target_chunk_iterator(
                 config["targets"], self.points_per_chunk
             )
             logger.info(

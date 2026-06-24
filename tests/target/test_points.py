@@ -377,3 +377,48 @@ def test_target_points_line_error():
         tgt.get_chunk(8, -5)
     with pytest.raises(IndexError, match="count out of range"):
         tgt.get_chunk(10, 5)
+
+
+def test_target_points_chunk_iterator():
+    """target.points: target_chunk_iterator behaviour"""
+
+    t1 = points.PointLine(10, 1, start_position=[0, 0, 0], end_position=[9, 0, 0])
+    t2 = points.PointLine(6, 1, start_position=[0, 0, 0], end_position=[0, 5, 0])
+    chunks = points.target_chunk_iterator([t1, t2], 4)
+
+    # Each chunk should be from a single plugin. Output should be plugin index in
+    # original list, first point index within plugin, position and reflectivity.
+    chunk = next(chunks)
+    assert chunk[0] == 0
+    assert chunk[1] == 0
+    assert np.allclose(chunk[2], t1.get_chunk(0, 4)[0])
+    assert np.allclose(chunk[3], t1.get_chunk(0, 4)[1])
+
+    chunk = next(chunks)
+    assert chunk[0] == 0
+    assert chunk[1] == 4
+    assert np.allclose(chunk[2], t1.get_chunk(4, 4)[0])
+    assert np.allclose(chunk[3], t1.get_chunk(4, 4)[1])
+
+    # Last chunk of plugin => can be smaller than desired.
+    chunk = next(chunks)
+    assert chunk[0] == 0
+    assert chunk[1] == 8
+    assert np.allclose(chunk[2], t1.get_chunk(8, 2)[0])
+    assert np.allclose(chunk[3], t1.get_chunk(8, 2)[1])
+
+    chunk = next(chunks)
+    assert chunk[0] == 1
+    assert chunk[1] == 0
+    assert np.allclose(chunk[2], t2.get_chunk(0, 4)[0])
+    assert np.allclose(chunk[3], t2.get_chunk(0, 4)[1])
+
+    chunk = next(chunks)
+    assert chunk[0] == 1
+    assert chunk[1] == 4
+    assert np.allclose(chunk[2], t2.get_chunk(4, 2)[0])
+    assert np.allclose(chunk[3], t2.get_chunk(4, 2)[1])
+
+    # Should now be empty.
+    with pytest.raises(StopIteration):
+        next(chunks)
