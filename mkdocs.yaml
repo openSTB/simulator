@@ -126,6 +126,10 @@ nav:
       - HFM chirp: plugins/signal/hfm_chirp.md
       - LFM chirp: plugins/signal/lfm_chirp.md
       - Plugin interface: plugins/signal/interface.md
+    - Trajectory:
+      - Overview: plugins/trajectory/overview.md
+      - Linear: plugins/trajectory/linear.md
+      - Plugin interface: plugins/trajectory/interface.md
   - Release notes:
     - release_notes/v0.8.0.md
     - release_notes/v0.7.0.md

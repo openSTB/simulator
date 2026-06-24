@@ -11,6 +11,7 @@ import quaternionic
 
 from openstb.i18n.support import translations
 from openstb.simulator.plugin.abc import Trajectory
+from openstb.simulator.util import quaternion_from_vectors
 
 _ = translations.load("openstb.simulator").gettext
 
@@ -28,12 +29,13 @@ class Linear(Trajectory):
         """
         Parameters
         ----------
-        start_position, end_position : array-like of 3 floats
-            The start and end position of the trajectory in the global coordinate
-            system.
-        speed : float
+        start_position
+            The start position of the trajectory in the global coordinate system.
+        end_position
+            The end position of the trajectory in the global coordinate system.
+        speed
             The speed of the system in metres per second.
-        start_time : datetime.datetime, str, int, optional
+        start_time
             The time at which the trajectory starts. If a datetime instance is given, it
             will be converted to UTC. An string in the ISO 8601 format
             "YYYY-MM-DDTHH:MM:SS+ZZ:ZZ", where the "+ZZ:ZZ" represents the offset of the
@@ -62,23 +64,9 @@ class Linear(Trajectory):
         self._velocity = speed * diff / self._length
         self._duration = float(self._length / speed)
 
-        # Calculate the orientation of the system. The cross product will be zero for
-        # trajectories parallel to the x axis hence the special cases. We store the
-        # result as a NumPy array here as quaternionic arrays cannot be pickled for
-        # transfer between workers.
-        hvec = diff / self._length
-        dp = np.dot([1, 0, 0], hvec)
-        if np.isclose(dp, 1):
-            self._ori = np.array([1.0, 0.0, 0.0, 0.0])
-        elif np.isclose(dp, -1):
-            self._ori = np.array([0.0, 0.0, 0.0, 1.0])
-        else:
-            angle = np.arccos(dp)
-            axis = np.cross([1, 0, 0], hvec)
-            axis /= np.linalg.norm(axis)
-            c = np.cos(angle / 2)
-            s = np.sin(angle / 2)
-            self._ori = np.array([c, s * axis[0], s * axis[1], s * axis[2]])
+        # Calculate the orientation of the system. We store the result as a NumPy array
+        # here as quaternionic arrays cannot be pickled for transfer between workers.
+        self._ori = quaternion_from_vectors([1, 0, 0], diff).ndarray
 
         # Calculate or convert the start time as needed.
         if start_time is None:
