@@ -110,6 +110,10 @@ nav:
       - plugins/distortion/geometric_spreading.md
       - plugins/distortion/rectangular_beampattern.md
       - Plugin interface: plugins/distortion/interface.md
+    - Environment:
+      - Overview: plugins/environment/overview.md
+      - plugins/environment/invariant.md
+      - Plugin interface: plugins/environment/interface.md
     - Ping times:
       - Overview: plugins/ping_times/overview.md
       - plugins/ping_times/constant_distance.md

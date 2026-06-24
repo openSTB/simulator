@@ -14,11 +14,11 @@ class InvariantEnvironment(Environment):
         """
         Parameters
         ----------
-        salinity : float
+        salinity
             The salinity in parts per thousand.
-        sound_speed : float
+        sound_speed
             The speed of propagation in metres per second.
-        temperature : float
+        temperature
             The temperature in degrees Celsius.
 
         """

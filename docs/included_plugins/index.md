@@ -26,12 +26,6 @@ each plugin.
   ([API documentation][openstb.simulator.cluster.dask_mpi.DaskMPICluster])
 
 
-## Environment
-
-* `invariant`: spatially and temporally invariant operating environment
-  ([API documentation][openstb.simulator.environment.invariant.InvariantEnvironment])
-
-
 ## Point targets
 
 * `random_point_rectangle`: points randomly distributed inside a rectangular area
