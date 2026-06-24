@@ -202,7 +202,7 @@ exclude_lines = [
 [tool.ruff]
 target-version = "py312"
 extend-exclude = [
-  "tests/test_plugin_modules/local/plugin_triple.py",
+  "tests/plugin/modules/local/plugin_triple.py",
 ]
 
 [tool.ruff.lint.flake8-annotations]
