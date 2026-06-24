@@ -99,7 +99,6 @@ nav:
   - Plugins:
     - plugins/index.md
     - plugins/specifying.md
-    - included_plugins/index.md
     - Controller:
       - Overview: plugins/controller/overview.md
       - plugins/controller/simple_points.md
@@ -130,6 +129,7 @@ nav:
       - Overview: plugins/trajectory/overview.md
       - Linear: plugins/trajectory/linear.md
       - Plugin interface: plugins/trajectory/interface.md
+    - included_plugins/index.md
   - Release notes:
     - release_notes/v0.8.0.md
     - release_notes/v0.7.0.md

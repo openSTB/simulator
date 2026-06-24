@@ -3,12 +3,12 @@ SPDX-FileCopyrightText: openSTB contributors
 SPDX-License-Identifier: BSD-2-Clause-Patent
 ---
 
-# Included plugins
+# Other included plugins
 
-The following sections list the plugins included with the simulator. The plugin name
-they can be loaded with is shown. The API documentation of the plugin code is linked to
-for more details about the parameters for each plugin. As this documentation is
-extended, further details and examples of the plugins will be added.
+The following sections list the plugins included with the simulator which are not yet
+individually documented. The plugin name they can be loaded with is shown. The API
+documentation of the plugin code is linked to for more details about the parameters for
+each plugin.
 
 
 ## Configuration loader
@@ -26,34 +26,10 @@ extended, further details and examples of the plugins will be added.
   ([API documentation][openstb.simulator.cluster.dask_mpi.DaskMPICluster])
 
 
-## Distortion
-
-* `anslie_mccolm_attenuation`: acoustic attenuation using the model of Anslie and McColm
-  ([API documentation][openstb.simulator.distortion.environmental.AnslieMcColmAttenuation])
-
-* `doppler`: model the distortion of the spectrum due to the Doppler effect
-  ([API documentation][openstb.simulator.distortion.doppler.DopplerDistortion])
-
-* `geometric_spreading`: energy loss due to geometric spreadding
-  ([API documentation][openstb.simulator.distortion.environmental.GeometricSpreading])
-
-* `rectangular_beampattern`: beampattern of an ideal rectangular transducer
-  ([API documentation][openstb.simulator.distortion.beampattern.RectangularBeampattern])
-
-
 ## Environment
 
 * `invariant`: spatially and temporally invariant operating environment
   ([API documentation][openstb.simulator.environment.invariant.InvariantEnvironment])
-
-
-## Ping times
-
-* `constant_distance`: travel a fixed distance between pings
-  ([API documentation][openstb.simulator.system.ping_times.ConstantDistance])
-
-* `constant_interval`: emit pings at a constant rate
-  ([API documentation][openstb.simulator.system.ping_times.ConstantInterval])
 
 
 ## Point targets
@@ -66,27 +42,6 @@ extended, further details and examples of the plugins will be added.
 
 * `single_point`: single point target at a specified location
   ([API documentation][openstb.simulator.target.points.SinglePoint])
-
-
-## Result converters
-
-* `matlab`: save results to a MATLAB data file
-  ([API documentation][openstb.simulator.result_converter.matlab.MATLABConverter])
-
-* `numpy`: save results to a NumPy `.npz` file
-  ([API documentation][openstb.simulator.result_converter.numpy.NumpyConverter])
-
-
-## Signals
-
-* `lfm_chirp`: transmit a linear frequency modulated chirp
-  ([API documentation][openstb.simulator.system.signal.LFMChirp])
-
-
-## Simulation controllers
-
-* `simple_points`: simulate using idealised point targets
-  ([API documentation][openstb.simulator.controller.simple_points.SimplePointSimulation])
 
 
 ## Signal windows
@@ -117,12 +72,6 @@ extended, further details and examples of the plugins will be added.
 
 * `generic`: basic collection of transducers and the transmitted signal
   ([API documentation][openstb.simulator.system.GenericSystem])
-
-
-## Trajectory
-
-* `linear`: idealised linear trajectory
-  ([API documentation][openstb.simulator.system.trajectory.Linear])
 
 
 ## Transducers
