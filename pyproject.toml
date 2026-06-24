@@ -183,6 +183,7 @@ omit = [
   "*/openstb/i18n/*",
   "*/test_plugin_modules/*",
   "*/pytest-*/*",
+  "*/tests/*",
   "conftest.py",
 ]
 
