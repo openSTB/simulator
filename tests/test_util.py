@@ -8,6 +8,101 @@ import quaternionic
 from openstb.simulator import util
 
 
+def q_allclose(q1, q2) -> bool:
+    return np.allclose(q1.ndarray, q2) or np.allclose((-q1).ndarray, q2)
+
+
+def test_util_quaternion_from_vectors_parallel():
+    """util.quaternion_from_vectors: parallel inputs"""
+    ref = [1, 0, 0]
+    tgt = [1, 0, 0]
+    q = util.quaternion_from_vectors(ref, tgt)
+    assert q.shape == (4,)
+    assert q_allclose(q, [1, 0, 0, 0])
+
+    tgt = [10, 0, 0]
+    q = util.quaternion_from_vectors(ref, tgt)
+    assert q.shape == (4,)
+    assert q_allclose(q, [1, 0, 0, 0])
+
+    tgt = [[1, 0, 0], [2, 0, 0], [3, 0, 0]]
+    q = util.quaternion_from_vectors(ref, tgt)
+    assert q.shape == (3, 4)
+    assert q_allclose(q, [1, 0, 0, 0])
+
+    ref = [10, 0, 0]
+    q = util.quaternion_from_vectors(ref, tgt)
+    assert q.shape == (3, 4)
+    assert q_allclose(q, [1, 0, 0, 0])
+
+    ref = [[10, 0, 0], [10, 0, 0], [10, 0, 0]]
+    q = util.quaternion_from_vectors(ref, tgt)
+    assert q.shape == (3, 4)
+    assert q_allclose(q, [1, 0, 0, 0])
+
+
+def test_util_quaternion_from_vectors_antiparallel():
+    """util.quaternion_from_vectors: anti-parallel inputs"""
+    ref = [-1, 0, 0]
+    tgt = [1, 0, 0]
+    q = util.quaternion_from_vectors(ref, tgt)
+    assert q.shape == (4,)
+    assert q_allclose(q, [0, 0, 0, 1])
+
+
+def test_util_quaternion_from_vectors_axes():
+    """util.quaternion_from_vectors: with cardinal axes"""
+    ref = [1, 0, 0]
+    tgt = [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+    q = util.quaternion_from_vectors(ref, tgt)
+    assert np.allclose(q.rotate(ref), tgt)
+
+
+def test_util_quaternion_from_vectors_random_tgt():
+    """util.quaternion_from_vectors: with random targets"""
+    ref = [1, 0, 0]
+    rng = np.random.default_rng(56789171761751)
+    tgt = rng.uniform(-5, 5, (10, 20, 3))
+    q = util.quaternion_from_vectors(ref, tgt)
+    assert q.shape == (10, 20, 4)
+    assert np.allclose(q.norm, 1)
+
+    # Rotate the reference by this and check it is parallel to the original.
+    unit_tgt = q.rotate(ref)
+    norm = np.linalg.norm(tgt, axis=-1, keepdims=True)
+    assert np.allclose(np.vecdot(unit_tgt, tgt / norm, axis=-1), 1)
+
+
+def test_util_quaternion_from_vectors_random_vec():
+    """util.quaternion_from_vectors: with random vectors"""
+    rng = np.random.default_rng(568264810875)
+    ref = rng.uniform(-5, 5, (10, 20, 3))
+    tgt = rng.uniform(-5, 5, (10, 20, 3))
+    q = util.quaternion_from_vectors(ref, tgt)
+
+    assert q.shape == (10, 20, 4)
+    assert np.allclose(q.norm, 1)
+    norm_ref = np.linalg.norm(ref, axis=-1, keepdims=True)
+    norm_tgt = np.linalg.norm(tgt, axis=-1, keepdims=True)
+    gen = util.rotate_elementwise(q, ref)
+    assert np.allclose(np.vecdot(tgt / norm_tgt, gen / norm_ref, axis=-1), 1)
+
+
+def test_util_quaternion_from_vectors_error():
+    """util.quaternion_from_vectors: error reporting"""
+    with pytest.raises(ValueError, match="reference.+size 3"):
+        util.quaternion_from_vectors([1, 0], [1, 0, 0])
+    with pytest.raises(ValueError, match="target.+size 3"):
+        util.quaternion_from_vectors([1, 0, 0], [1, 0])
+
+    with pytest.raises(ValueError, match="reference.+single.+or.+same size"):
+        util.quaternion_from_vectors([[1, 0, 0], [0, 1, 0]], [1, 0, 0])
+    with pytest.raises(ValueError, match="reference.+single.+or.+same size"):
+        util.quaternion_from_vectors(
+            [[1, 0, 0], [0, 1, 0]], [[1, 0, 0], [1, 0, 0], [1, 0, 0]]
+        )
+
+
 @pytest.mark.parametrize(
     "q,v,vprime",
     [
