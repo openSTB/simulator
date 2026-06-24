@@ -99,6 +99,7 @@ class DaskLocalCluster(DaskCluster):
             memory_limit=self.memory,
             dashboard_address=self.dashboard_address,
             security=self.security,
+            silence_logs=False,
         )
 
         self._client = self._cluster.get_client()
