@@ -30,7 +30,7 @@ def ensure_terminated(request):
 @pytest.mark.cluster_plugin
 def test_cluster_dask_local(ensure_terminated):
     """cluster: basic DaskLocalCluster operation"""
-    c = DaskLocalCluster(workers=2, total_memory=0.01, dashboard_address=None)
+    c = DaskLocalCluster(workers=2, total_memory=0.1, dashboard_address=None)
     ensure_terminated.append(c)
 
     c.initialise()
@@ -61,7 +61,7 @@ def test_cluster_dask_local_dashboard(caplog, ensure_terminated):
     caplog.set_level(logging.INFO)
 
     # ":0" -> use a random available port.
-    c = DaskLocalCluster(workers=2, total_memory=0.01, dashboard_address=":0")
+    c = DaskLocalCluster(workers=2, total_memory=0.1, dashboard_address=":0")
     ensure_terminated.append(c)
     c.initialise()
 
@@ -92,15 +92,15 @@ def test_cluster_dask_local_dashboard(caplog, ensure_terminated):
 def test_cluster_dask_local_workers():
     """cluster: DaskLocalCluster settings for number of workers"""
     # Set number.
-    c = DaskLocalCluster(workers=4, total_memory=0.01)
+    c = DaskLocalCluster(workers=4, total_memory=0.1)
     assert c.workers == 4
 
     # All available.
-    c = DaskLocalCluster(workers=-1, total_memory=0.01)
+    c = DaskLocalCluster(workers=-1, total_memory=0.1)
     assert c.workers == dask.system.CPU_COUNT
 
     # Fraction of available.
-    c = DaskLocalCluster(workers=0.5, total_memory=0.01)
+    c = DaskLocalCluster(workers=0.5, total_memory=0.1)
     assert c.workers == dask.system.CPU_COUNT // 2
 
 
@@ -118,12 +118,12 @@ def test_cluster_dask_local_memory():
     assert c.memory == 500_000
 
     # Fraction of system memory per worker.
-    c = DaskLocalCluster(workers=2, worker_memory=0.01)
-    assert c.memory == int(floor(distributed.system.MEMORY_LIMIT * 0.01))
+    c = DaskLocalCluster(workers=2, worker_memory=0.1)
+    assert c.memory == int(floor(distributed.system.MEMORY_LIMIT * 0.1))
 
     # Fraction of system memory over all workers.
-    c = DaskLocalCluster(workers=2, total_memory=0.01)
-    assert c.memory == int(floor(distributed.system.MEMORY_LIMIT * 0.005))
+    c = DaskLocalCluster(workers=2, total_memory=0.1)
+    assert c.memory == int(floor(distributed.system.MEMORY_LIMIT * 0.05))
 
 
 def test_cluster_dask_local_error():
