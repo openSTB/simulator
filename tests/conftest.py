@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: openSTB contributors
 # SPDX-License-Identifier: BSD-2-Clause-Patent
 
-from typing import Generator
+from collections.abc import Iterator
 
 from distributed.client import Client
 from distributed.diagnostics.plugin import WorkerPlugin
@@ -13,7 +13,7 @@ from openstb.simulator.plugin.abc import DaskCluster
 
 
 @pytest.fixture(scope="session")
-def _session_cluster() -> Generator[tuple[dict, list[dict]]]:
+def _session_cluster() -> Iterator[tuple[dict, list[dict]]]:
     """Session-scoped cluster to use for testing."""
 
     class WorkerCoverage(WorkerPlugin):
@@ -66,7 +66,7 @@ class TestFixtureCluster(DaskCluster):
 
 
 @pytest.fixture(scope="function")
-def test_cluster(_session_cluster: tuple[dict, list[dict]]) -> Generator[DaskCluster]:
+def test_cluster(_session_cluster: tuple[dict, list[dict]]) -> Iterator[DaskCluster]:
     """Function-scoped fixture return a test abc.DaskCluster"""
     # Connect a client to the session-wide cluster.
     scheduler, workers = _session_cluster
