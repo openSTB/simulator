@@ -1,0 +1,63 @@
+# SPDX-FileCopyrightText: openSTB contributors
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+
+name: Code quality checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  reuse:
+    name: Check REUSE compliance
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: fsfe/reuse-action@v6
+
+  ruff:
+    name: Check code style
+    runs-on: ubuntu-slim
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check code formatting
+        uses: astral-sh/ruff-action@v4.0.0
+        with:
+          args: "format --check --diff"
+
+        # The default is run `ruff check`
+      - name: Check code style
+        uses: astral-sh/ruff-action@v4.0.0
+
+  typehinting:
+    name: Check static type hinting
+    runs-on: ubuntu-slim
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'  # Oldest version the simulator supports
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Install package
+        run: uv pip install mypy -e .[tests,MPI]
+        env:
+          UV_SYSTEM_PYTHON: 1
+
+      - name: Check package code
+        run: mypy -p openstb.simulator
+
+      - name: Check unit tests
+        if: always()  # Even if there were errors in the package code
+        run: mypy tests/
