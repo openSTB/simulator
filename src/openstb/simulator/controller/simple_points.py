@@ -17,6 +17,7 @@ import zarr
 from openstb.i18n.support import translations
 from openstb.simulator.plugin import abc
 from openstb.simulator.target.points import target_chunk_iterator
+from openstb.simulator.utils.reduction import DaskReductionTree
 
 _ = translations.load("openstb.simulator").gettext
 
@@ -167,7 +168,7 @@ def _point_simulation_chunk(
 
 
 def _point_simulation_store(
-    storage: zarr.Array, ping: int, receiver: int, results_fdomain: list[np.ndarray]
+    storage: zarr.Array, ping: int, receiver: int, result_fdomain: np.ndarray
 ) -> None:
     """Store the result of a piece of the simulation.
 
@@ -179,17 +180,11 @@ def _point_simulation_store(
         The ping index of the result.
     receiver
         The receiver of the result.
-    results_fdomain
-        The Fourier domain results to add to the storage. These are summed, returned to
-        the time domain and added to the current result in the storage.
+    result_fdomain
+        The Fourier domain result to add to the storage. This are returned to the time
+        domain and added to the current result in the storage.
 
     """
-    # Combine the results, noting we may have a single-element list.
-    if len(results_fdomain) == 1:
-        result_fdomain = results_fdomain[0]
-    else:
-        result_fdomain = np.sum(results_fdomain, axis=0)
-
     # Return to the time domain.
     result = np.fft.ifft(np.fft.ifftshift(result_fdomain), norm="forward")
 
@@ -402,6 +397,21 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         storage.attrs["baseband_frequency"] = self.baseband_frequency
         storage.attrs["sample_rate"] = self.sample_rate
 
+        # Create a function which is called when a chunk of results has been reduced and
+        # schedules the reduced values to be added to the pressure variable.
+        def store_reduced(future: distributed.Future) -> None:
+            key = f"store-result-{self.ping}-{self.receiver}-{tokenize(future)}"
+            self.tasks.add(
+                client.submit(
+                    _point_simulation_store,
+                    pressure,
+                    self.ping,
+                    self.receiver,
+                    future,
+                    key=key,
+                )
+            )
+
         logger.info(
             _(
                 "Simulation size: %(Np)d pings, %(Nr)d receivers, %(Ns)d samples per "
@@ -454,9 +464,7 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         self.ping = 0
         self.receiver = 0
         self.target_iter: None | Iterator = None
-        self.to_reduce: list[list[distributed.Future]] = []
-        for i in range(self.reduction_levels):
-            self.to_reduce.append([])
+        self.reduction = DaskReductionTree(client, np.sum, {"axis": 0}, store_reduced)
         self.sim_tasks = 0
 
         logger.info(_("Beginning simulation"))
@@ -597,13 +605,12 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
             )
             self.tasks.add(future)
             self.sim_tasks += 1
-
-            self._reduce_and_store(client, store_var, future)
+            self.reduction.add_futures(future)
 
         # We have finished this ping+receiver pair.
         if self.target_iter is None:
             # Ensure the final tasks are summed and saved.
-            self._reduce_and_store(client, store_var, None)
+            self.reduction.flush()
 
             # Move on to the next ping+receiver to simulate.
             self.receiver += 1
@@ -612,70 +619,3 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
                 self.ping += 1
                 if self.ping >= len(ping_start):
                     self.ping = -1
-
-    def _reduce_and_store(
-        self,
-        client: distributed.Client,
-        store_var: zarr.Array,
-        new_task: distributed.Future | None,
-    ):
-        """Generation reduction tree and store tasks.
-
-        Parameters
-        ----------
-        client
-            The Dask client to submit tasks to.
-        store_var
-            The array to store results in.
-        new_task
-            A new simulation task to add to a reduction tree. If None, sum all tasks
-            currently in the reduction tree and store. This can be used to flush the
-            tree at the end of the simulation tasks for a ping+receiver pair.
-
-        """
-        future = new_task
-
-        for i in range(self.reduction_levels):
-            # Store any given future at this level.
-            if future is not None:
-                self.to_reduce[i].append(future)
-
-            # If we are still adding tasks, check if we have enough futures at this
-            # level to sum up and move to the next.
-            if new_task is not None:
-                if len(self.to_reduce[i]) < self.reduction_node_count:
-                    break
-
-            # There are no more tasks for this ping. Check if there are any remaining
-            # futures at this level.
-            else:
-                if not self.to_reduce[i]:
-                    future = None
-                    continue
-
-            # Sum all results at this level and store if this is the final level.
-            inputs = list(self.to_reduce[i])
-            self.to_reduce[i].clear()
-            if i == (self.reduction_levels - 1):
-                key = f"store-result-{self.ping}-{self.receiver}-{tokenize(future)}"
-                self.tasks.add(
-                    client.submit(
-                        _point_simulation_store,
-                        store_var,
-                        self.ping,
-                        self.receiver,
-                        inputs,
-                        priority=i,
-                        key=key,
-                    )
-                )
-
-            else:
-                # At the end of the ping+receiver pair, we may have a single result
-                # which we can pass directly on to the next level.
-                if len(inputs) > 1:
-                    key = f"reducing-sum-{tokenize(inputs)}"
-                    future = client.submit(np.sum, inputs, axis=0, key=key, priority=i)
-                    self.tasks.add(future)
-                else:
-                    future = inputs[0]
