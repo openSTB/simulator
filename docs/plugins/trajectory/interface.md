@@ -74,7 +74,7 @@ from numpy.typing import ArrayLike
 import quaternionic
 
 from openstb.simulator.plugin.abc import Trajectory
-from openstb.simulator.util import quaternion_from_vectors
+from openstb.simulator.utils.quaternion import quaternion_from_vectors
 
 
 class TwoSegmentLinear(Trajectory):

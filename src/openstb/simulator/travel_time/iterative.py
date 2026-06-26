@@ -14,7 +14,7 @@ from openstb.simulator.plugin.abc import (
     TravelTime,
     TravelTimeResult,
 )
-from openstb.simulator.util import rotate_elementwise
+from openstb.simulator.utils.quaternion import rotate_elementwise
 
 _ = translations.load("openstb.simulator").gettext
 

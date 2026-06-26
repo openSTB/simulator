@@ -6,7 +6,7 @@ from numpy.typing import ArrayLike
 
 from openstb.i18n.support import translations
 from openstb.simulator.plugin.abc import Distortion, Environment, TravelTimeResult
-from openstb.simulator.util import rotate_elementwise
+from openstb.simulator.utils.quaternion import rotate_elementwise
 
 _ = translations.load("openstb.simulator").gettext
 
