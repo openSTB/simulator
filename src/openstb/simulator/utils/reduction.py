@@ -25,13 +25,14 @@ is 2^3 = 8, meaning that 8 inputs to the tree are reduced to a single output.
 
 """
 
-from typing import Any, Callable
+from collections.abc import Iterable
+from typing import Any, Callable, Concatenate
 
 from dask.tokenize import tokenize
 import distributed
 
 
-class DaskReductionTree:
+class DaskReductionTree[T]:
     """Dask-based reduction tree to aggregate multiple futures to one.
 
     This is given a reduction function which is scheduled to run on the cluster. Each
@@ -45,9 +46,10 @@ class DaskReductionTree:
     def __init__(
         self,
         client: distributed.Client,
-        reduce_func: Callable,
-        reduce_kwargs: dict[str, Any] | None,
-        output_func: Callable[[distributed.Future], None],
+        output_func: Callable[[distributed.Future[T]], None],
+        reduce_func: Callable[Concatenate[T, ...], T],
+        reduce_args: Iterable[Any] | None = None,
+        reduce_kwargs: dict[str, Any] | None = None,
         levels: int = 3,
         futures: int = 4,
     ):
@@ -56,15 +58,17 @@ class DaskReductionTree:
         ----------
         client
             The Dask client to submit reduction tasks to.
+        output_func
+            The function to call when a reduction is complete. This will be given the
+            future corresponding to the output of the final reduction.
         reduce_func
             The function to call to reduce some data. This will be scheduled through the
             Dask client. It will be passed a list of the results from the input futures
             and must returned the reduced result.
+        reduce_args
+            Positional arguments to pass to `reduce_func`.
         reduce_kwargs
             Keyword arguments to pass to `reduce_func`.
-        output_func
-            The function to call when a reduction is complete. This will be given the
-            future corresponding to the final reduction and any keyword arguments.
         levels
             The number of levels of reduction to perform before calling `output_func`.
         futures
@@ -72,18 +76,19 @@ class DaskReductionTree:
 
         """
         self.client = client
-        self.reduce_func = reduce_func
-        self.reduce_kwargs = reduce_kwargs or {}
         self.output_func = output_func
+        self.reduce_func = reduce_func
+        self.reduce_args = reduce_args or []
+        self.reduce_kwargs = reduce_kwargs or {}
         self.levels = levels
         self.futures = futures
 
         # Prepare storage for futures that have not been fully reduced.
-        self._reducing: list[list[distributed.Future]] = []
+        self._reducing: list[list[distributed.Future[T]]] = []
         for i in range(self.levels):
             self._reducing.append([])
 
-    def add_futures(self, *futures: distributed.Future) -> None:
+    def add_futures(self, *futures: distributed.Future[T]) -> None:
         """Add futures to the reduction tree.
 
         Parameters
@@ -103,6 +108,7 @@ class DaskReductionTree:
                 reduced = self.client.submit(
                     self.reduce_func,
                     to_reduce,
+                    *self.reduce_args,
                     key=f"reduction-{level}-{tokenize(to_reduce)}",
                     **self.reduce_kwargs,
                 )
@@ -146,6 +152,7 @@ class DaskReductionTree:
         reduced = self.client.submit(
             self.reduce_func,
             remaining,
+            *self.reduce_args,
             key=f"reduction-finish-{tokenize(remaining)}",
             **self.reduce_kwargs,
         )

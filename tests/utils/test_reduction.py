@@ -17,7 +17,12 @@ def test_utils_reduction_dask_basic(test_cluster: abc.DaskCluster):
         reduced.append(future)
 
     rtree = reduction.DaskReductionTree(
-        test_cluster.client, np.sum, {"axis": 0}, output_func, levels=2, futures=2
+        test_cluster.client,
+        output_func,
+        np.sum,
+        reduce_kwargs={"axis": 0},
+        levels=2,
+        futures=2,
     )
 
     # Insert some futures singly.

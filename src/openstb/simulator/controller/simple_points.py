@@ -464,7 +464,14 @@ class SimplePointSimulation(abc.Controller[SimplePointConfig]):
         self.ping = 0
         self.receiver = 0
         self.target_iter: None | Iterator = None
-        self.reduction = DaskReductionTree(client, np.sum, {"axis": 0}, store_reduced)
+        self.reduction = DaskReductionTree(
+            client,
+            store_reduced,
+            np.sum,
+            reduce_kwargs={"axis": 0},
+            levels=self.reduction_levels,
+            futures=self.reduction_node_count,
+        )
         self.sim_tasks = 0
 
         logger.info(_("Beginning simulation"))
