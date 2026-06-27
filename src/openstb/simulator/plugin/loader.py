@@ -3,18 +3,51 @@
 
 """Support for finding and loading plugins."""
 
+from collections.abc import Mapping
 import hashlib
 import importlib.metadata
 import importlib.util
 import inspect
+from os import PathLike
 from pathlib import Path
-from typing import Any, Callable, Literal, overload
+from typing import (
+    Any,
+    Callable,
+    Literal,
+    NotRequired,
+    TypedDict,
+    overload,
+)
 
 from openstb.i18n.support import translations
 from openstb.simulator.plugin import abc
-from openstb.simulator.types import F_PluginLoader, PluginOrSpec, T_Plugin
 
 _ = translations.load("openstb.simulator").gettext
+
+
+class PluginSpec(TypedDict):
+    """Specification for a plugin."""
+
+    name: str
+    """Name of the plugin.
+
+    This can be in any format supported by the [load_plugin_class]
+    [openstb.simulator.plugin.loader.load_plugin_class] function.
+
+    """
+
+    parameters: Mapping[str, Any]
+    """Parameters for the plugin."""
+
+    spec_source: NotRequired[str | PathLike[str]]
+    """Source of this specification.
+
+    For example the configuration file it was loaded from. This may be used for error
+    reporting, and it may also be used by the plugin if it needs to load data based on
+    the original source (e.g., from a file with a filename relative to the original
+    configuration file).
+
+    """
 
 
 @overload
@@ -64,7 +97,11 @@ def registered_plugins(
     return [(ep.name, ep.value) for ep in importlib.metadata.entry_points(group=group)]
 
 
-def load_plugin_class(group: str, name: str) -> type[T_Plugin]:
+type PluginLoader[T] = Callable[[PluginSpec | T], T]
+"""A callable which takes a plugin or specification and returns a plugin."""
+
+
+def load_plugin_class[T](group: str, name: str) -> type[T]:
     """Load a plugin class.
 
     Three formats are supported for the name of the plugin:
@@ -161,29 +198,11 @@ def load_plugin_class(group: str, name: str) -> type[T_Plugin]:
     return getattr(mod, classname)
 
 
-#: Lookup table of functions which have been registered as able to load a particular
-#: class of plugin.
-registered_loaders: dict[type, F_PluginLoader] = {}
+registered_loaders: dict[type, PluginLoader] = {}
+"""Available plugin loader functions."""
 
 
-# For when the decorator is used directly (without parameters).
-@overload
-def register_loader(__loader: F_PluginLoader[T_Plugin]) -> F_PluginLoader[T_Plugin]: ...
-
-
-# For when the decorator is used with parameters.
-@overload
-def register_loader(
-    *, docstring: bool | None = None, name: str | None = None
-) -> Callable[[F_PluginLoader[T_Plugin]], F_PluginLoader[T_Plugin]]: ...
-
-
-def register_loader(
-    __loader: F_PluginLoader[T_Plugin] | None = None,
-    *,
-    docstring: bool | None = None,
-    name: str | None = None,
-):
+def register_loader[T](loader: PluginLoader[T]) -> PluginLoader[T]:
     """Decorator to register a plugin loading function.
 
     This should be applied to a function which takes a
@@ -191,51 +210,23 @@ def register_loader(
 
     Parameters
     ----------
-    docstring
-        Whether to set a docstring for the class. If None (the default), then a
-        docstring will only be set if one does not already exist.
-    name
-        The name of the plugin type to use in the docstring. If not specified, the
-        class name will be used.
+    loader
+        The loader to register.
+
+    Returns
+    -------
+    PluginLoader
+        The original loader.
 
     """
+    # Use the return annotation to do the registration.
+    cls = inspect.signature(loader).return_annotation
+    registered_loaders[cls] = loader
 
-    def registration(loader: F_PluginLoader[T_Plugin]) -> F_PluginLoader[T_Plugin]:
-        # Use the return annotation to do the actual registration.
-        cls = inspect.signature(loader).return_annotation
-        registered_loaders[cls] = loader
-
-        # Check if we need to set a doctring.
-        if docstring is None:
-            set_docstring = loader.__doc__ is None or len(loader.__doc__.strip()) == 0
-        else:
-            set_docstring = docstring
-        if set_docstring:
-            docname = name or cls.__name__
-            loader.__doc__ = f"""Load a {docname} plugin.
-
-Parameters
-----------
-plugin_spec : dict, {cls.__name__}
-    If a dictionary, this specifies the name and parameters of the {docname} to
-    load. Otherwise, it is assumed to be an instance of a compatible class and is
-    returned unchanged.
-
-Returns
--------
-{cls.__name__}"""
-
-        return loader
-
-    # Directly used.
-    if __loader is not None:
-        return registration(__loader)
-
-    # Used with parameters.
-    return registration
+    return loader
 
 
-def load_plugin(group: str, plugin_spec: PluginOrSpec[T_Plugin]) -> T_Plugin:
+def load_plugin[T](group: str, plugin_spec: PluginSpec | T) -> T:
     """Load a plugin and create an instance of it.
 
     In general, you should call one of the more specific functions in this module to
@@ -253,13 +244,15 @@ def load_plugin(group: str, plugin_spec: PluginOrSpec[T_Plugin]) -> T_Plugin:
 
     Returns
     -------
-    abc.Plugin
+    instance : abc.Plugin
+        If a plugin specification dictionary was given, an instance of the plugin it
+        defined. Otherwise, the input object is returned unchanged.
 
     """
     # Note: we cannot check isinstance(..., Mapping) here as plugins may implement the
     # Mapping interface.
     if isinstance(plugin_spec, dict):
-        cls: type[T_Plugin] = load_plugin_class(group, plugin_spec["name"])
+        cls: type[T] = load_plugin_class(group, plugin_spec["name"])
 
         # Start with parameters from the spec.
         params: dict[str, Any] = {}
@@ -276,71 +269,283 @@ def load_plugin(group: str, plugin_spec: PluginOrSpec[T_Plugin]) -> T_Plugin:
     return plugin_spec
 
 
-@register_loader(name="configuration loader")
-def config_loader(plugin_spec: PluginOrSpec[abc.ConfigLoader]) -> abc.ConfigLoader:
+@register_loader
+def config_loader(plugin_spec: PluginSpec | abc.ConfigLoader) -> abc.ConfigLoader:
+    """Load a configuration loader plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.ConfigLoader
+        The configuration loader instance.
+
+    """
     return load_plugin("openstb.simulator.config_loader", plugin_spec)
 
 
-@register_loader(name="controller")
-def controller(plugin_spec: PluginOrSpec[abc.Controller]) -> abc.Controller:
+@register_loader
+def controller(plugin_spec: PluginSpec | abc.Controller) -> abc.Controller:
+    """Load a simulation controller plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.Controller
+        The simulation controller instance.
+
+    """
     return load_plugin("openstb.simulator.controller", plugin_spec)
 
 
-@register_loader(name="Dask cluster")
-def dask_cluster(plugin_spec: PluginOrSpec[abc.DaskCluster]) -> abc.DaskCluster:
+@register_loader
+def dask_cluster(plugin_spec: PluginSpec | abc.DaskCluster) -> abc.DaskCluster:
+    """Load a Dask cluster plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.DaskCluster
+        The Dask cluster instance.
+
+    """
     return load_plugin("openstb.simulator.dask_cluster", plugin_spec)
 
 
-@register_loader(name="echo signal distortion")
-def distortion(plugin_spec: PluginOrSpec[abc.Distortion]) -> abc.Distortion:
+@register_loader
+def distortion(plugin_spec: PluginSpec | abc.Distortion) -> abc.Distortion:
+    """Load a distortion plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.Distortion
+        The distortion instance.
+
+    """
     return load_plugin("openstb.simulator.distortion", plugin_spec)
 
 
-@register_loader(name="environmental parameters")
-def environment(plugin_spec: PluginOrSpec[abc.Environment]) -> abc.Environment:
+@register_loader
+def environment(plugin_spec: PluginSpec | abc.Environment) -> abc.Environment:
+    """Load a environment plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.Environment
+        The environment instance.
+
+    """
     return load_plugin("openstb.simulator.environment", plugin_spec)
 
 
-@register_loader(name="ping times")
-def ping_times(plugin_spec: PluginOrSpec[abc.PingTimes]) -> abc.PingTimes:
+@register_loader
+def ping_times(plugin_spec: PluginSpec | abc.PingTimes) -> abc.PingTimes:
+    """Load a ping time plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.PingTimes
+        The ping times instance.
+
+    """
     return load_plugin("openstb.simulator.ping_times", plugin_spec)
 
 
-@register_loader(name="point targets")
-def point_targets(plugin_spec: PluginOrSpec[abc.PointTargets]) -> abc.PointTargets:
+@register_loader
+def point_targets(plugin_spec: PluginSpec | abc.PointTargets) -> abc.PointTargets:
+    """Load a point targets plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.PointTargets
+        The point targets instance.
+
+    """
     return load_plugin("openstb.simulator.point_targets", plugin_spec)
 
 
-@register_loader(name="result converter")
-def result_converter(spec: PluginOrSpec[abc.ResultConverter]) -> abc.ResultConverter:
-    return load_plugin("openstb.simulator.result_converter", spec)
+@register_loader
+def result_converter(
+    plugin_spec: PluginSpec | abc.ResultConverter,
+) -> abc.ResultConverter:
+    """Load a result converter plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.ResultConverter
+        The result converter instance.
+
+    """
+    return load_plugin("openstb.simulator.result_converter", plugin_spec)
 
 
-@register_loader(name="signal")
-def signal(plugin_spec: PluginOrSpec[abc.Signal]) -> abc.Signal:
+@register_loader
+def signal(plugin_spec: PluginSpec | abc.Signal) -> abc.Signal:
+    """Load a signal plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.Signal
+        The signal instance.
+
+    """
     return load_plugin("openstb.simulator.signal", plugin_spec)
 
 
-@register_loader(name="signal window")
-def signal_window(plugin_spec: PluginOrSpec[abc.SignalWindow]) -> abc.SignalWindow:
+@register_loader
+def signal_window(plugin_spec: PluginSpec | abc.SignalWindow) -> abc.SignalWindow:
+    """Load a signal window plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.SignalWindow
+        The signal window instance.
+
+    """
     return load_plugin("openstb.simulator.signal_window", plugin_spec)
 
 
-@register_loader(name="system")
-def system(plugin_spec: PluginOrSpec[abc.System]) -> abc.System:
+@register_loader
+def system(plugin_spec: PluginSpec | abc.System) -> abc.System:
+    """Load a system plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.System
+        The system instance.
+
+    """
     return load_plugin("openstb.simulator.system", plugin_spec)
 
 
-@register_loader(name="trajectory")
-def trajectory(plugin_spec: PluginOrSpec[abc.Trajectory]) -> abc.Trajectory:
+@register_loader
+def trajectory(plugin_spec: PluginSpec | abc.Trajectory) -> abc.Trajectory:
+    """Load a trajectory plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.Trajectory
+        The trajectory instance.
+
+    """
     return load_plugin("openstb.simulator.trajectory", plugin_spec)
 
 
-@register_loader(name="transducer")
-def transducer(plugin_spec: PluginOrSpec[abc.Transducer]) -> abc.Transducer:
+@register_loader
+def transducer(plugin_spec: PluginSpec | abc.Transducer) -> abc.Transducer:
+    """Load a transducer plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.Transducer
+        The transducer instance.
+
+    """
     return load_plugin("openstb.simulator.transducer", plugin_spec)
 
 
-@register_loader(name="travel time")
-def travel_time(plugin_spec: PluginOrSpec[abc.TravelTime]) -> abc.TravelTime:
+@register_loader
+def travel_time(plugin_spec: PluginSpec | abc.TravelTime) -> abc.TravelTime:
+    """Load a travel time plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.TravelTime
+        The travel time instance.
+
+    """
     return load_plugin("openstb.simulator.travel_time", plugin_spec)

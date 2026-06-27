@@ -8,7 +8,7 @@ import tomllib
 
 from openstb.i18n.support import translations
 from openstb.simulator.plugin.abc import ConfigLoader
-from openstb.simulator.types import PluginSpec
+from openstb.simulator.plugin.loader import PluginSpec
 
 _ = translations.load("openstb.simulator").gettext
 

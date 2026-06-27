@@ -4,9 +4,7 @@
 import numpy as np
 from numpy.typing import ArrayLike
 
-from openstb.simulator.plugin import abc
-from openstb.simulator.plugin.loader import signal_window
-from openstb.simulator.types import PluginOrSpec
+from openstb.simulator.plugin import abc, loader
 
 
 class LFMChirp(abc.Signal):
@@ -33,7 +31,7 @@ class LFMChirp(abc.Signal):
         duration: float,
         rms_spl: float,
         rms_after_window: bool = True,
-        window: PluginOrSpec[abc.SignalWindow] | None = None,
+        window: loader.PluginSpec | abc.SignalWindow | None = None,
     ):
         """
         Parameters
@@ -63,7 +61,7 @@ class LFMChirp(abc.Signal):
         self._duration = duration
         self.rms_spl = rms_spl
         self.rms_after_window = rms_after_window and (window is not None)
-        self.window = None if window is None else signal_window(window)
+        self.window = None if window is None else loader.signal_window(window)
 
     @property
     def duration(self) -> float:
@@ -158,7 +156,7 @@ class HFMChirp(abc.Signal):
         duration: float,
         rms_spl: float,
         rms_after_window: bool = True,
-        window: PluginOrSpec[abc.SignalWindow] | None = None,
+        window: loader.PluginSpec | abc.SignalWindow | None = None,
     ):
         """
         Parameters
@@ -188,7 +186,7 @@ class HFMChirp(abc.Signal):
         self._duration = duration
         self.rms_spl = rms_spl
         self.rms_after_window = rms_after_window and (window is not None)
-        self.window = None if window is None else signal_window(window)
+        self.window = None if window is None else loader.signal_window(window)
 
     @property
     def duration(self) -> float:

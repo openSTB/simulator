@@ -5,7 +5,6 @@ from collections.abc import Sequence
 
 from openstb.simulator.plugin import loader
 from openstb.simulator.plugin.abc import Signal, System, Transducer
-from openstb.simulator.types import PluginOrSpec
 
 
 class GenericSystem(System):
@@ -13,9 +12,9 @@ class GenericSystem(System):
 
     def __init__(
         self,
-        transmitter: PluginOrSpec[Transducer],
-        receivers: Sequence[PluginOrSpec[Transducer]],
-        signal: PluginOrSpec[Signal],
+        transmitter: loader.PluginSpec | Transducer,
+        receivers: Sequence[loader.PluginSpec | Transducer],
+        signal: loader.PluginSpec | Signal,
     ):
         """
         Parameters

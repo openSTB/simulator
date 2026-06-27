@@ -34,6 +34,8 @@ _ = translations.load("openstb.simulator").gettext
 
 
 class Plugin(ABC):
+    """An abstract base class for plugins."""
+
     pass
 
 

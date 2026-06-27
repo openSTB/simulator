@@ -6,9 +6,8 @@ from numpy.typing import ArrayLike
 import quaternionic
 
 from openstb.i18n.support import translations
+from openstb.simulator.plugin import loader
 from openstb.simulator.plugin.abc import Distortion, Transducer
-from openstb.simulator.plugin.loader import distortion
-from openstb.simulator.types import PluginOrSpec
 
 _ = translations.load("openstb.simulator").gettext
 
@@ -20,7 +19,7 @@ class GenericTransducer(Transducer):
         self,
         position: ArrayLike,
         orientation: ArrayLike | quaternionic.QArray,
-        beampattern: PluginOrSpec[Distortion] | None = None,
+        beampattern: loader.PluginSpec | Distortion | None = None,
     ):
         """
         Parameters
@@ -48,7 +47,7 @@ class GenericTransducer(Transducer):
         if beampattern is None:
             self._distortion = []
         else:
-            self._distortion = [distortion(beampattern)]
+            self._distortion = [loader.distortion(beampattern)]
 
     @property
     def position(self) -> np.ndarray:
