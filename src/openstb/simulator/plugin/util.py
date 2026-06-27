@@ -8,7 +8,6 @@ import warnings
 
 from openstb.i18n.support import translations
 from openstb.simulator.plugin import abc, loader
-from openstb.simulator.types import SimulationConfig
 
 trans = translations.load("openstb.simulator")
 _ = trans.gettext
@@ -53,7 +52,7 @@ def find_config_loader(
 
 
 def load_config_plugins(
-    config_class: type[SimulationConfig] | None,
+    config_class: type[abc.ControllerConfig] | None,
     config: MutableMapping[str, Any],
     missing: Literal["error", "warn", "ignore"] = "error",
     extra: Literal["error", "warn", "ignore"] = "error",

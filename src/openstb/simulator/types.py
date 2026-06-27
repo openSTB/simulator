@@ -33,10 +33,3 @@ PluginOrSpec = Union[T_Plugin, PluginSpec]
 
 #: A callable which takes a plugin or specification and returns a plugin.
 F_PluginLoader = Callable[[PluginOrSpec[T_Plugin]], T_Plugin]
-
-
-#: Generic type for the configuration of a simulation. Each type of simulation will
-#: require a different configuration structure. Here we simply say it will be a mapping
-#: from string keys to any type of object, and allow the plugins to define a more
-#: specific type.
-SimulationConfig = TypeVar("SimulationConfig", bound=Mapping[str, Any])

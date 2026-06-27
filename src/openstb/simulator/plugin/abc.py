@@ -17,10 +17,11 @@ detailed checking.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from enum import IntEnum
-from typing import Any, Generic
+from typing import Any
 
 import dask.distributed
 import numpy as np
@@ -28,7 +29,6 @@ from numpy.typing import ArrayLike
 import quaternionic
 
 from openstb.i18n.support import translations
-from openstb.simulator.types import SimulationConfig
 
 _ = translations.load("openstb.simulator").gettext
 
@@ -37,12 +37,27 @@ class Plugin(ABC):
     pass
 
 
-class Controller(Plugin, Generic[SimulationConfig]):
-    """Controller to run a simulation."""
+type ControllerConfig = Mapping[str, Any]
+"""Configuration for a simulation controller.
+
+Each type of controller will require a different configuration structure. This is
+expected to be a mapping of string keys to any type of object. Each controller plugin
+should define a specific configuration.
+
+"""
+
+
+class Controller[C: ControllerConfig](Plugin):
+    """Controller to run a simulation.
+
+    For type-hinting purposes, this class is generic in `C`, the `ControllerConfig` type
+    defining the configuration of the controller.
+
+    """
 
     @property
     @abstractmethod
-    def config_class(src) -> type[SimulationConfig]:
+    def config_class(src) -> type[C]:
         """The configuration class for this controller.
 
         Note that this is the class, not an instance of the class.
@@ -51,12 +66,12 @@ class Controller(Plugin, Generic[SimulationConfig]):
         pass
 
     @abstractmethod
-    def run(self, config: SimulationConfig):
+    def run(self, config: C):
         """Run the simulation.
 
         Parameters
         ----------
-        config : mapping
+        config
             A mapping configuring the simulation. The specific structure will be defined
             by each plugin.
 
@@ -749,18 +764,18 @@ class ResultConverter(Plugin):
     """Convert a simulator result from its internal format to a desired format."""
 
     @abstractmethod
-    def can_handle(self, format: ResultFormat | str, config: SimulationConfig) -> bool:
+    def can_handle(self, format: ResultFormat | str, config: ControllerConfig) -> bool:
         """Check if this plugin will be able to convert a simulation result.
 
         Parameters
         ----------
-        format : ResultFormat, str
+        format
             The format of the simulation result. Simulation type plugins provided by the
             main package will use one of the values from the `ResultFormat` enum. Those
             from external plugins may still use a standard format, or may use a string
             to refer to a custom format.
-        config : SimulationConfig
-            The simulation configuration. The `SimulationConfigt` type represents a
+        config
+            The controller configuration. The `ControllerConfig` type represents a
             mapping with string keys that will vary based on the type of simulation
             being run.
 
@@ -775,13 +790,13 @@ class ResultConverter(Plugin):
 
     @abstractmethod
     def convert(
-        self, format: ResultFormat | str, result: Any, config: SimulationConfig
+        self, format: ResultFormat | str, result: Any, config: ControllerConfig
     ) -> bool:
         """Convert a simulation result.
 
         Parameters
         ----------
-        format : ResultFormat, str
+        format
             The format of the simulation result. Simulation types provided by the main
             package will use one of the values from the `ResultFormat` enum. Simulation
             types from external plugins may still use a standard format, or may use a
@@ -790,8 +805,8 @@ class ResultConverter(Plugin):
             The simulation result. Simulation type plugins provided by the main package
             will use a `zarr.Group` instance. Other plugins may use different structures
             to hold the result.
-        config : SimulationConfig
-            The simulation configuration. The `SimulationConfig` type represents a
+        config
+            The controller configuration. The `ControllerConfig` type represents a
             mapping with string keys that will vary based on the type of simulation
             being run.
 

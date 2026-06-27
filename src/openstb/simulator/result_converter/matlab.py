@@ -10,7 +10,7 @@ from typing import Any, Literal
 import scipy.io
 
 from openstb.i18n.support import translations
-from openstb.simulator.plugin.abc import ResultConverter, ResultFormat, SimulationConfig
+from openstb.simulator.plugin.abc import ControllerConfig, ResultConverter, ResultFormat
 
 _ = translations.load("openstb.simulator").gettext
 
@@ -69,11 +69,11 @@ class MATLABConverter(ResultConverter):
                 )
             )
 
-    def can_handle(self, format: ResultFormat | str, config: SimulationConfig):
+    def can_handle(self, format: ResultFormat | str, config: ControllerConfig):
         return format == ResultFormat.ZARR_BASEBAND_PRESSURE
 
     def convert(
-        self, format: ResultFormat | str, result: Any, config: SimulationConfig
+        self, format: ResultFormat | str, result: Any, config: ControllerConfig
     ):
         if format != ResultFormat.ZARR_BASEBAND_PRESSURE:
             return False

@@ -62,7 +62,7 @@ class PressureNPYConverter(abc.ResultConverter):
     def can_handle(
         self,
         format: abc.ResultFormat | str,
-        config: abc.SimulationConfig,
+        config: abc.ControllerConfig,
     ) -> bool:
         # This is the only format we support converting.
         return format == abc.ResultFormat.ZARR_BASEBAND_PRESSURE
@@ -71,7 +71,7 @@ class PressureNPYConverter(abc.ResultConverter):
         self,
         format: abc.ResultFormat | str,
         result: Any,
-        config: abc.SimulationConfig,
+        config: abc.ControllerConfig,
     ) -> bool:
         # Sanity check.
         if format != abc.ResultFormat.ZARR_BASEBAND_PRESSURE:
