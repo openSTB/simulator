@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: openSTB contributors
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+
+name: Determine oldest package versions in SPEC0 window
+
+outputs:
+  package-spec:
+    description: "package specification for uv install"
+    value: ${{ steps.spec.outputs.package-spec }}
+
+runs:
+  using: composite
+
+  steps:
+    - name: Install script dependencies
+      shell: bash
+      run: uv pip install requests packaging
+      env:
+        UV_SYSTEM_PYTHON: 1
+
+    - id: spec
+      name: Run script
+      shell: bash
+      run: |
+        echo "$(python3 ${{ github.action_path }}/spec0_oldest.py)" >> "$GITHUB_OUTPUT"

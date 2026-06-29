@@ -61,3 +61,34 @@ jobs:
 
       - name: Run unit tests
         run: pytest --cov-report=xml
+
+
+  spec0:
+    name: Run tests with oldest SPEC0 dependencies
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'  # Oldest supported version
+
+      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - id: find-oldest
+        name: Find oldest dependency versions in SPEC0 support window
+        uses: ./.github/actions/spec0_oldest
+
+      - name: Install oldest SPEC0 dependencies
+        run: uv pip install ${{ steps.find-oldest.outputs.package-spec }}
+        env:
+          UV_SYSTEM_PYTHON: 1
+
+      - name: Install package
+        run: uv pip install -e .[tests]
+        env:
+          UV_SYSTEM_PYTHON: 1
+
+      - name: Run unit tests
+        run: pytest --cov-report=xml
