@@ -103,6 +103,7 @@ nav:
       - Overview: plugins/controller/overview.md
       - plugins/controller/simple_points.md
       - plugins/controller/interface.md
+      - Helpers: plugins/controller/helpers.md
     - Distortion:
       - Overview: plugins/distortion/overview.md
       - plugins/distortion/anslie_mccolm.md

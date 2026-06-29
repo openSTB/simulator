@@ -31,6 +31,10 @@ from typing import Any, Callable, Concatenate
 from dask.tokenize import tokenize
 import distributed
 
+from openstb.i18n.support import translations
+
+_ = translations.load("openstb.simulator").gettext
+
 
 class DaskReductionTree[T]:
     """Dask-based reduction tree to aggregate multiple futures to one.
@@ -46,8 +50,8 @@ class DaskReductionTree[T]:
     def __init__(
         self,
         client: distributed.Client,
-        output_func: Callable[[distributed.Future[T]], None],
-        reduce_func: Callable[Concatenate[T, ...], T],
+        output_func: Callable[[distributed.Future[T], Any], None],
+        reduce_func: Callable[Concatenate[list[T], ...], T],
         reduce_args: Iterable[Any] | None = None,
         reduce_kwargs: dict[str, Any] | None = None,
         levels: int = 3,
@@ -60,7 +64,8 @@ class DaskReductionTree[T]:
             The Dask client to submit reduction tasks to.
         output_func
             The function to call when a reduction is complete. This will be given the
-            future corresponding to the output of the final reduction.
+            future corresponding to the output of the final reduction and the current
+            value of the tag property.
         reduce_func
             The function to call to reduce some data. This will be scheduled through the
             Dask client. It will be passed a list of the results from the input futures
@@ -82,13 +87,39 @@ class DaskReductionTree[T]:
         self.reduce_kwargs = reduce_kwargs or {}
         self.levels = levels
         self.futures = futures
+        self._tag = None
 
         # Prepare storage for futures that have not been fully reduced.
         self._reducing: list[list[distributed.Future[T]]] = []
         for i in range(self.levels):
             self._reducing.append([])
 
-    def add_futures(self, *futures: distributed.Future[T]) -> None:
+    @property
+    def tag(self) -> Any:
+        """Tag associated with the data being reduced currently.
+
+        The current tag is passed to the output function. It can be used as metadata for
+        the current calculations.
+
+        Note that changing the tag will result in an exception if there are pending
+        reductions. It is recommended that you call the `flush` method prior to changing
+        the tag.
+
+        """
+        return self._tag
+
+    @tag.setter
+    def tag(self, value: Any):
+        for pending in self._reducing:
+            if pending:
+                raise RuntimeError(
+                    _("cannot change tag when DaskReductionTree is not empty")
+                )
+        self._tag = value
+
+    def add_futures(
+        self, *futures: distributed.Future[T]
+    ) -> list[distributed.Future[T]]:
         """Add futures to the reduction tree.
 
         Parameters
@@ -96,7 +127,14 @@ class DaskReductionTree[T]:
         *futures
             Futures to reduce.
 
+        Returns
+        -------
+        list[distributed.Future]
+            Any futures submitted to the cluster to perform the reduction.
+
         """
+        added = []
+
         # Insert at the first level.
         self._reducing[0].extend(futures)
 
@@ -112,15 +150,18 @@ class DaskReductionTree[T]:
                     key=f"reduction-{level}-{tokenize(to_reduce)}",
                     **self.reduce_kwargs,
                 )
+                added.append(reduced)
                 del self._reducing[level][: self.futures]
 
                 # Output or add to the next level.
                 if level == self.levels - 1:
-                    self.output_func(reduced)
+                    self.output_func(reduced, self._tag)
                 else:
                     self._reducing[level + 1].append(reduced)
 
-    def flush(self) -> None:
+        return added
+
+    def flush(self) -> list[distributed.Future[T]]:
         """Flush the reduction tree.
 
         In most situations, the number of futures to reduce won't be an exact multiple
@@ -134,6 +175,11 @@ class DaskReductionTree[T]:
 
         After this method has been called, the tree is guaranteed to be empty.
 
+        Returns
+        -------
+        list[distributed.Future]
+            Any futures submitted to the cluster to perform the reduction.
+
         """
         # Collect all remaining futures at any level.
         remaining = []
@@ -142,11 +188,11 @@ class DaskReductionTree[T]:
             self._reducing[level].clear()
 
         if not remaining:
-            return
+            return []
 
         if len(remaining) == 1:
-            self.output_func(remaining[0])
-            return
+            self.output_func(remaining[0], self._tag)
+            return []
 
         # Schedule the reduction and output the future.
         reduced = self.client.submit(
@@ -156,4 +202,5 @@ class DaskReductionTree[T]:
             key=f"reduction-finish-{tokenize(remaining)}",
             **self.reduce_kwargs,
         )
-        self.output_func(reduced)
+        self.output_func(reduced, self._tag)
+        return [reduced]

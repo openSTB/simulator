@@ -41,9 +41,9 @@ def test_controller_simple_points_chunk_amplitude(amplitude: float, spreading: s
     S = np.fft.fftshift(np.fft.fft(s, norm="forward"))
     assert np.allclose(np.abs(S).max(), amplitude / 10)
 
-    # Create common setting structure
+    # Create common setting structure.
     plugin = GeometricSpreading(power=1)
-    common = simple_points._CommonSettings(
+    common = simple_points.CommonSettings(
         f=f,
         S=S,
         signal_frequency_bounds=(f_signal - 1e3, f_signal + 1e3),
@@ -57,17 +57,21 @@ def test_controller_simple_points_chunk_amplitude(amplitude: float, spreading: s
         echo_distortion=[plugin] if spreading == "echo" else [],
     )
 
-    # Simulate two targets spaced by more than signal length.
-    E = simple_points._point_simulation_chunk(
-        position=np.array([[25, 0, 0], [50, 0, 0]]),
-        reflectivity=np.array([1, 1]),
+    # Create the chunk setting structure.
+    chunk_settings = simple_points.ChunkSettings(
         ping_time=0,
         rx_position=np.array([0, 0, 0]),
         rx_ori=np.array([1, 0, 0, 0]),
         rx_distortion=[plugin] if spreading == "rx" else [],
-        common=common,
         max_t=T * 10,
     )
+
+    # And the target chunk. The first two entries correspond to indices from the
+    # target_chunk_iterator helper used in the simulation loop.
+    chunk = (0, 0, np.array([[25, 0, 0], [50, 0, 0]]), np.array([1, 1]))
+
+    # Simulate two targets spaced by more than signal length.
+    E = simple_points.point_simulation_chunk(chunk, (common, chunk_settings))
 
     # Transform back to the time domain and check each target.
     e = np.fft.ifft(np.fft.ifftshift(E), norm="forward")
