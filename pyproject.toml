@@ -15,7 +15,7 @@ requires-python = ">=3.12"
 dependencies = [
   "click",
   "cryptography",
-  "dask[distributed]",
+  "dask[distributed]>=2025.11.0",
   "numpy",
   "openstb-i18n",
   "quaternionic",
