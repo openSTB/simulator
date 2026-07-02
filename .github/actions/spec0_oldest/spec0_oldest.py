@@ -89,6 +89,7 @@ def oldest_spec0_version(requirement: str) -> str:
     # Loop through all uploaded files.
     oldest_version = None
     oldest_yanked = False
+    oldest_point = None
     for upload in data["files"]:
         if "upload-time" not in upload or "filename" not in upload:
             continue
@@ -106,6 +107,8 @@ def oldest_spec0_version(requirement: str) -> str:
         # Only include major or minor releases, apart from some special-cases we know
         # don't follow semver in this way.
         if version.micro > 0 and rq.name not in {"quaternionic"}:
+            if oldest_point is None or version < oldest_point:
+                oldest_point = version
             continue
 
         # Ensure this version matches any version limits in the requirement.
@@ -117,9 +120,13 @@ def oldest_spec0_version(requirement: str) -> str:
             oldest_version = version
             oldest_yanked = upload.get("yanked", False)
 
-    # Nothing matched our criteria.
+    # Nothing matched our criteria. If there was no non-point release in the window, use
+    # the oldest point release.
     if oldest_version is None:
-        raise ValueError(f"could not determine version for {rq.name}")
+        if oldest_point is not None:
+            oldest_version = oldest_point
+        else:
+            raise ValueError(f"could not determine version for {rq.name}")
 
     # If the oldest release has been yanked, find the oldest version younger than it.
     if oldest_yanked:
