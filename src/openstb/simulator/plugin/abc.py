@@ -24,6 +24,7 @@ from enum import IntEnum
 from typing import Any
 
 import dask.distributed
+import gsw.density  # type:ignore[import-untyped]
 import numpy as np
 from numpy.typing import ArrayLike
 import quaternionic
@@ -192,6 +193,42 @@ class DaskCluster(Plugin):
 
 class Environment(Plugin):
     """Properties of the environment the sonar is operating in."""
+
+    def density(self, t: ArrayLike, position: ArrayLike) -> np.ndarray:
+        """Get the density of the seawater.
+
+        The default method is to use the Gibbs SeaWater toolbox implementation of the
+        TEOS-10 model to estimate the density from the salinity, temperature and
+        pressure. The salinity and temperature are found from the other methods of this
+        plugin, and the pressure relative to the surface pressure is assumed to be
+        1.00553z in decibar where z is the vertical component of the position.
+
+        Plugins may override this default implementation to use a different method of
+        finding the density if desired.
+
+        Parameters
+        ----------
+        t
+            The times of interest in seconds since the start of the trajectory.
+        position
+            The positions of interest in global coordinates. This must have a final axis
+            of size 3 containing the coordinates. All other axes must be broadcastable
+            with `t`.
+
+        Returns
+        -------
+        density
+            The density of the water in kilograms per cubic metre at the requested times
+            and positions. This will be compatible with the broadcast shape of `t` and
+            `position` (ignoring the final axis of `position`).  Some axes may have size
+            one if the density is constant along them.
+
+        """
+        salinity = self.salinity(t, position)
+        temp = self.temperature(t, position)
+        pressure = np.array(position)[..., 2] * 1.00553
+
+        return gsw.density.rho_t_exact(salinity, temp, pressure)
 
     @abstractmethod
     def salinity(self, t: ArrayLike, position: ArrayLike) -> np.ndarray:
