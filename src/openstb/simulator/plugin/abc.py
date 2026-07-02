@@ -209,10 +209,10 @@ class Environment(Plugin):
         Returns
         -------
         salinity : numpy.ndarray
-            The salinity of the water in parts per thousand at the requested times and
-            positions. This will be compatible with the broadcast shape of ``t`` and
-            ``position`` (ignoring the final axis of ``position``). Some axes may have
-            size one if the salinity is constant along them.
+            The absolute salinity of the water in grams per kilogram of water at the
+            requested times and positions. This will be compatible with the broadcast
+            shape of ``t`` and ``position`` (ignoring the final axis of ``position``).
+            Some axes may have size one if the salinity is constant along them.
 
         """
         pass

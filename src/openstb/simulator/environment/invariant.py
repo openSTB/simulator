@@ -15,7 +15,7 @@ class InvariantEnvironment(Environment):
         Parameters
         ----------
         salinity
-            The salinity in parts per thousand.
+            The absolute salinity in grams per kilogram of water.
         sound_speed
             The speed of propagation in metres per second.
         temperature
