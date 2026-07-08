@@ -132,6 +132,7 @@ nav:
       - Plugin interface: plugins/signal/interface.md
     - Trajectory:
       - Overview: plugins/trajectory/overview.md
+      - Circular: plugins/trajectory/circular.md
       - Linear: plugins/trajectory/linear.md
       - Plugin interface: plugins/trajectory/interface.md
     - included_plugins/index.md

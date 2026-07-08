@@ -128,6 +128,7 @@ tukey = "openstb.simulator.system.signal_windows:TukeyWindow"
 generic = "openstb.simulator.system:GenericSystem"
 
 [project.entry-points."openstb.simulator.trajectory"]
+circular = "openstb.simulator.system.trajectory:Circular"
 linear = "openstb.simulator.system.trajectory:Linear"
 
 [project.entry-points."openstb.simulator.transducer"]

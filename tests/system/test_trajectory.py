@@ -10,7 +10,7 @@ import quaternionic
 from openstb.simulator.system import trajectory
 
 
-@pytest.mark.parametrize("cls", [trajectory.Linear])
+@pytest.mark.parametrize("cls", [trajectory.Linear, trajectory.Circular])
 def test_system_trajectory_start_time(cls):
     """system.trajectory: trajectory plugin start time handling"""
     if cls == trajectory.Linear:
@@ -18,6 +18,13 @@ def test_system_trajectory_start_time(cls):
             "start_position": [0, 0, 0],
             "end_position": [100, 0, 0],
             "speed": 2.0,
+        }
+    elif cls == trajectory.Circular:
+        params = {
+            "centre": [0, 0, 0],
+            "radius": 30,
+            "speed": 1.5,
+            "clockwise": True,
         }
 
     # Default should be None -> current time.
@@ -48,6 +55,106 @@ def test_system_trajectory_start_time(cls):
     assert traj.start_time == start
     traj = cls(**params, start_time="2023-12-11T22:59:33+12:00")
     assert traj.start_time == start
+
+
+def test_system_trajectory_circular_errors():
+    """system.trajectory.Circular: error handling"""
+    with pytest.raises(ValueError, match="3 element vector required.+centre"):
+        trajectory.Circular(0, 30, 1.5, True)
+    with pytest.raises(ValueError, match="3 element vector required.+centre"):
+        trajectory.Circular([0, 0], 30, 1.5, False)
+    with pytest.raises(ValueError, match="3 element vector required.+centre"):
+        trajectory.Circular([[0, 0, 0], [0, 0, 0]], 30, 1, True)
+
+    with pytest.raises(ValueError, match="speed of circular.+positive"):
+        trajectory.Circular([0, 0, 0], 30, -1.5, True)
+    with pytest.raises(ValueError, match="speed of circular.+positive"):
+        trajectory.Circular([0, 0, 0], 30, 0, True)
+
+    with pytest.raises(ValueError, match="number of circles.+positive"):
+        trajectory.Circular([0, 0, 0], 30, 1.5, True, num_circles=0)
+    with pytest.raises(ValueError, match="number of circles.+positive"):
+        trajectory.Circular([0, 0, 0], 30, 1.5, True, num_circles=-1.0)
+
+
+@pytest.mark.parametrize("clockwise", [True, False])
+@pytest.mark.parametrize("num_circles", [1, 1.5, 2])
+def test_system_trajectory_circular_properties(clockwise, num_circles):
+    """system.trajectory.Circular: trajectory properties"""
+    traj = trajectory.Circular([0, 0, 0], 50, 0.8, clockwise, num_circles=num_circles)
+
+    assert np.allclose(traj.length, 2 * num_circles * np.pi * 50)
+    assert np.allclose(traj.duration, 2.5 * num_circles * np.pi * 50)
+
+
+@pytest.mark.parametrize("clockwise", [True, False])
+@pytest.mark.parametrize(
+    "centre,radius,num_circles,start_angle,speed",
+    [
+        [[0, 0, 0], 40, 1, 0, 2],
+        [[0, 0, 10], 50, 0.8, np.pi / 2, 1.5],
+        [[67, -22, 7.5], 45, 2.2, -np.pi / 2, 1.2],
+    ],
+)
+def test_system_trajectory_circular_methods(
+    clockwise, centre, radius, num_circles, start_angle, speed
+):
+    """system.trajectory.Circular: trajectory methods"""
+    traj = trajectory.Circular(
+        centre,
+        radius,
+        speed,
+        clockwise,
+        start_angle=start_angle,
+        num_circles=num_circles,
+    )
+
+    # Sample the trajectory.
+    t = np.arange(-5, 105) * traj.duration / 100
+    pos = traj.position(t)
+    ori = traj.orientation(t)
+    vel = traj.velocity(t)
+
+    # Check values outside duration are NaN, inside are non-NaN.
+    assert np.all(np.isnan(pos[:5]))
+    assert not np.any(np.isnan(pos[5:-4]))
+    assert np.all(np.isnan(pos[-4:]))
+    assert np.all(np.isnan(ori[:5]))
+    assert not np.any(np.isnan(ori[5:-4]))
+    assert np.all(np.isnan(ori[-4:]))
+    assert np.all(np.isnan(vel[:5]))
+    assert not np.any(np.isnan(vel[5:-4]))
+    assert np.all(np.isnan(vel[-4:]))
+
+    # Select just the relevant portions.
+    pos = pos[5:-4]
+    ori = ori[5:-4]
+    vel = vel[5:-4]
+
+    # Positions all lie on a circle on the expected plane.
+    assert np.allclose(np.linalg.norm(pos - centre, axis=-1), radius)
+    assert np.allclose(pos[:, 2], centre[2])
+
+    # Angle of each position from circle centre.
+    angle = np.unwrap(np.arctan2((pos - centre)[:, 1], (pos - centre)[:, 0]))
+    change = np.arange(101) * 2 * np.pi * num_circles / 100
+    if not clockwise:
+        change *= -1
+    assert np.allclose(angle, np.radians(start_angle) + change)
+
+    # If we rotate a speed vector by the orientation, we should get the velocity.
+    ori_vel = quaternionic.array(ori).rotate([speed, 0, 0])
+    assert np.allclose(ori_vel, vel)
+
+    # And the velocity should be tangent to the circle.
+    if clockwise:
+        heading = angle + np.pi / 2
+    else:
+        heading = angle - np.pi / 2
+    vel_expected = speed * np.stack(
+        [np.cos(heading), np.sin(heading), np.zeros_like(heading)], axis=-1
+    )
+    assert np.allclose(vel, vel_expected)
 
 
 def test_system_trajectory_linear_errors():
