@@ -16,7 +16,7 @@ for p in gsw_test_base.glob("gsw_cv_v*.npz"):
     gsw_test_data = p
 
 
-class TestEnvironment(Environment):
+class EnvironmentTestPlugin(Environment):
     def __init__(self):
         self.data = np.load(gsw_test_data)
 
@@ -33,7 +33,7 @@ class TestEnvironment(Environment):
 @pytest.mark.skipif(gsw_test_data is None, reason="GSW test data not available")
 def test_plugin_environment_default_density():
     """plugin.abc.Environment: check default density method"""
-    env = TestEnvironment()
+    env = EnvironmentTestPlugin()
 
     # Generate the equivalent test position with the inverse of the transform the
     # density() method will use.
