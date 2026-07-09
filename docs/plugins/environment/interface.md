@@ -14,7 +14,7 @@ registered under the  `openstb.simulator.environment` entry point.
 
 An environment plugin must provide a [`salinity`][openstb.simulator.plugin.abc.Environment.salinity]
 method. This takes an array of times and positions and must return the salinity of the
-water (in parts per thousand) at those points.
+water (in grams per kilogram of water) at those points.
 
 
 ## Sound speed
