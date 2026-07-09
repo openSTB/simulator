@@ -556,6 +556,74 @@ class PingTimes(Plugin):
         pass
 
 
+class ScatteringModel(Plugin):
+    """Model of acoustic scattering from an interface."""
+
+    @abstractmethod
+    def apply(
+        self,
+        f: ArrayLike,
+        S: ArrayLike,
+        time: ArrayLike,
+        position: ArrayLike,
+        normal: ArrayLike,
+        incident_vector: ArrayLike,
+        scattering_vector: ArrayLike,
+        environment: Environment,
+        baseband_frequency: float,
+        signal_frequency_bounds: tuple[float, float],
+    ) -> np.ndarray:
+        """Apply the scattering model to a signal.
+
+        Parameters
+        ----------
+        f
+            A one-dimensional array of the passband frequencies in Hertz that the
+            simulation is being performed at.
+        S
+            The Fourier coefficients of the current acoustic signal in the complex
+            baseband. This will be a two-dimensional array with the dimensions (f,
+            target). The target dimension may have size 1 if there is currently no
+            variation in the signal between targets.
+        time
+            The time, in seconds relative to the start of the trajectory, that the
+            signal reaches the interface. This will be a one-dimensional array with one
+            entry per target.
+        position
+            The position where each signal reaches the interface in global coordinates.
+            This will be a two-dimensional array with dimensions (target, xyz).
+        normal
+            The normal of the interface in global coordinates at each entry in
+            `position`. This will have the same shape as `position` and each entry will
+            have unit length.
+        incident_vector
+            The direction in global coordinates that the incident wave is travelling
+            when it reaches the interface. This will be a two-dimensional array with
+            dimensions (target, xyz) and each entry will have unit length.
+        scattering_vector
+            The direction in global coordinates that the scattered wave is travelling as
+            it leaves the interface to return to the receiver. This will have the same
+            shape as `incident_vector` and each entry will have unit length.
+        environment
+            Parameters of the environment the system is operating in.
+        baseband_frequency
+            The carrier frequency used to shift the signal into complex baseband.
+        signal_frequency_bounds
+            A tuple of floats (minimum frequency, maximum frequency) giving the
+            frequency bounds of the transmitted signal.
+
+        Returns
+        -------
+        modified_S : numpy.ndarray
+            A version of the signal input `S` modified to take the scattering properties
+            of the interface into account. This must have the same dimensions as `S`,
+            potentially with the `target` dimension expanded to full size if the
+            scattering varies by target.
+
+        """
+        pass
+
+
 @dataclass(slots=True, eq=False, order=False)
 class TravelTimeResult:
     """Results of a travel time calculation.

@@ -432,6 +432,28 @@ def result_converter(
 
 
 @register_loader
+def scattering_model(
+    plugin_spec: PluginSpec | abc.ScatteringModel,
+) -> abc.ScatteringModel:
+    """Load a scattering model plugin.
+
+    Parameters
+    ----------
+    plugin_spec
+        If a dictionary, this specifies the name and parameters of the plugin to load.
+        Otherwise, it is assumed to be an instance of a compatible class and is returned
+        unchanged.
+
+    Returns
+    -------
+    abc.ScatteringModel
+        The scattering model instance.
+
+    """
+    return load_plugin("openstb.simulator.scattering_model", plugin_spec)
+
+
+@register_loader
 def signal(plugin_spec: PluginSpec | abc.Signal) -> abc.Signal:
     """Load a signal plugin.
 

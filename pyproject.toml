@@ -111,6 +111,10 @@ single_point = "openstb.simulator.target.points:SinglePoint"
 matlab = "openstb.simulator.result_converter.matlab:MATLABConverter"
 numpy = "openstb.simulator.result_converter.numpy:NumpyConverter"
 
+[project.entry-points."openstb.simulator.scattering_model"]
+constant = "openstb.simulator.scattering.constant:ConstantScattering"
+lambertian = "openstb.simulator.scattering.lambertian:LambertianScattering"
+
 [project.entry-points."openstb.simulator.signal"]
 hfm_chirp = "openstb.simulator.system.signal:HFMChirp"
 lfm_chirp = "openstb.simulator.system.signal:LFMChirp"

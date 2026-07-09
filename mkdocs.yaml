@@ -125,6 +125,11 @@ nav:
       - MATLAB: plugins/result_converter/matlab.md
       - NumPy: plugins/result_converter/numpy.md
       - Plugin interface: plugins/result_converter/interface.md
+    - Scattering model:
+      - Overview: plugins/scattering_model/overview.md
+      - plugins/scattering_model/constant.md
+      - plugins/scattering_model/lambertian.md
+      - Plugin interface: plugins/scattering_model/interface.md
     - Signal:
       - Overview: plugins/signal/overview.md
       - HFM chirp: plugins/signal/hfm_chirp.md
