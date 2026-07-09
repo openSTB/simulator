@@ -1,0 +1,167 @@
+# SPDX-FileCopyrightText: openSTB contributors
+# SPDX-License-Identifier: BSD-2-Clause-Patent
+
+name: Build and publish Python distributions
+
+# Build distributions on every push. Only tagged versions will be published.
+# The built versions can be downloaded as artifacts from the workflow run.
+on: push
+
+jobs:
+  build-packages:
+    name: Build packages
+    runs-on: ubuntu-latest
+
+    outputs:
+      package-version: ${{ steps.version.outputs.package-version }}
+
+    steps:
+        # We need a full clone for the build system to get the correct version.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install build tools
+        run: |
+          python3 -m pip install --user build
+
+      - name: Build packages
+        run: |
+          python3 -m build
+
+      - name: Determine package version
+        id: version
+        run: |
+          echo "package-version=$(ls dist/*.whl | cut -d- -f2)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload sdist as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-built-sdist
+          path: dist/*.tar.gz
+          archive: false
+
+      - name: Upload wheel as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-built-wheel
+          path: dist/*.whl
+          archive: false
+
+
+  test-built-packages:
+    name: Test built packages
+    runs-on: ubuntu-latest
+
+    needs:
+      - build-packages
+
+    steps:
+      - name: Download the built packages
+        uses: actions/download-artifact@v8
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Install built wheel and test dependencies
+        run: |
+          python3 -m pip install dist/*.whl
+          python3 -m pip install pytest pytest-cov pytest-subtests requests
+
+      - name: Unpack source distribution to get tests
+        run: |
+          tar -xzf dist/*.tar.gz
+
+      - name: Run tests
+        run: |
+          cd openstb_simulator-*
+          pytest
+
+
+  create-draft-release:
+    name: Create draft GitHub release
+    runs-on: ubuntu-slim
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    needs:
+      - build-packages
+      - test-built-packages
+
+    # Need to be able to modify repository contents to create the release.
+    permissions:
+      contents: write
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+        # This needs to be run in a checked-out repository to find releases.
+      - name: Check if release already exists
+        id: check
+        run: |
+          if gh release view "v${{ needs.build-packages.outputs.package-version }}" >/dev/null 2>&1; then
+            echo 'GitHub release already exists'
+            echo 'exists=1' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Need to create GitHub release'
+            echo 'exists=0' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download the built packages
+        if: steps.check.outputs.exists == '0'
+        uses: actions/download-artifact@v8
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Create release
+        if: steps.check.outputs.exists == '0'
+        run: |
+          gh release create \
+            'v${{ needs.build-packages.outputs.package-version }}' \
+            --verify-tag \
+            --draft \
+            --title 'Version ${{ needs.build-packages.outputs.package-version }}' \
+            --notes-file 'docs/release_notes/v${{ needs.build-packages.outputs.package-version }}.md' \
+            dist/*
+
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-slim
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    needs:
+      - build-packages
+      - test-built-packages
+
+    # See https://github.com/marketplace/actions/pypi-publish for details on configuring
+    # the publishing action.
+
+    permissions:
+      id-token: write
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/openstb-simulator/
+
+    steps:
+      - name: Download the built packages
+        uses: actions/download-artifact@v8
+        with:
+          path: dist/
+          merge-multiple: true
+
+      - name: Publish packages to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
