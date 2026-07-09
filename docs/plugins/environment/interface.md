@@ -31,10 +31,24 @@ method. This takes an array of times and positions and must return the temperatu
 the water (in degrees Celsius) at those points.
 
 
+## Density
+
+Each environment plugin must provide a [`density`][openstb.simulator.plugin.abc.Environment.density]
+method. This takes an array of times and positions and must return the density of the
+water (in kilograms per cubic metre) at those points. The plugin base class has a
+default implementation of this method which takes the salinity and temperature from the
+corresponding methods and uses the [Gibbs SeaWater toolbox][gsw] to estimate the density
+assuming a linear relationship between depth and pressure. Plugins may provide their own
+implementation of this method if desired.
+
+[gsw]: https://teos-10.github.io/GSW-Python/
+
+
 ## Example
 
 The following plugin models an environment where the speed of sound varies with a
-constant gradient with respect to depth. The salinity and temperature are constant.
+constant gradient with respect to depth. The salinity and temperature are constant and
+the default implementation of the `density` method will be used.
 
 ```python
 import numpy as np
